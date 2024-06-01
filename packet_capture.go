@@ -30,7 +30,8 @@ func (cfg *pcapConfig) startPcap() error {
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
 	for packet := range packetSource.Packets() {
-		fmt.Printf("%v", packet)
+		fmt.Printf("Network Layer: %+v\n", packet.NetworkLayer())
+		fmt.Printf("Transport Layer: %+v\n", packet.TransportLayer())
 	}
 
 	return nil
@@ -85,6 +86,6 @@ func (cfg *pcapConfig) validateInterfaces() error {
 		}
 	}
 
-	return fmt.Errorf("Interface is not valid %w", selectedDevice)
+	return fmt.Errorf("interface is not valid %v", selectedDevice)
 
 }
