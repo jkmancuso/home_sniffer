@@ -29,9 +29,25 @@ func (cfg *pcapConfig) startPcap() error {
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
+	var netLayer, transportLayer, srcIP, dstIP, size string
+
 	for packet := range packetSource.Packets() {
-		fmt.Printf("Network Layer: %+v\n", packet.NetworkLayer())
-		fmt.Printf("Transport Layer: %+v\n", packet.TransportLayer())
+
+		// experiencing random SEGFAULT when grabbing netflow
+		// https://pkg.go.dev/github.com/google/gopacket#NetworkLayer
+		// so have to parse as string :(
+		netLayer = fmt.Sprintf("%+v", packet.NetworkLayer())
+		transportLayer = fmt.Sprintf("%+v", packet.TransportLayer())
+
+		srcIP, dstIP = parseIPs(netLayer)
+		size = parseSize(transportLayer)
+
+		fmt.Printf("src:%v,dst:%v,size:%v\n", srcIP, dstIP, size)
+
+		//some packets have no payload such as ACKs, just move to next iteration
+		if len(size) == 0 {
+			continue
+		}
 	}
 
 	return nil
