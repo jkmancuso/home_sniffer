@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 
@@ -9,17 +10,38 @@ import (
 
 func main() {
 
+	ctx := context.Background()
+
 	device := flag.String("device", "br0", "")
 	flag.Parse()
 
-	cfg := pcapConfig{
+	kafkaCfg := kafkaConfig{
+		topic:     "my-topic",
+		partition: 0,
+		transport: "tcp",
+		host:      "localhost",
+		port:      9092,
+	}
+
+	conn, err := kafkaCfg.connectKafka(ctx)
+
+	if err != nil {
+		log.Fatalf("Err: %v\ncould not connect to kafka with params: %+v", err, kafkaCfg)
+	}
+
+	store := kakfkaStore{
+		cfg:  kafkaCfg,
+		conn: conn,
+	}
+
+	captureCfg := pcapConfig{
 		device:  *device,
 		snaplen: 1600,
 		promisc: true,
 		timeout: pcap.BlockForever,
 	}
 
-	if err := cfg.startPcap(); err != nil {
+	if err := captureCfg.startPcap(store); err != nil {
 		log.Fatalf("could not start pcap %v", err)
 	}
 

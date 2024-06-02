@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/gopacket"
@@ -15,8 +16,14 @@ type pcapConfig struct {
 	timeout time.Duration
 }
 
+type packetData struct {
+	src    string
+	dst    string
+	length int
+}
+
 // Start new packet capture
-func (cfg *pcapConfig) startPcap() error {
+func (cfg *pcapConfig) startPcap(store packetStore) error {
 	fmt.Printf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.newPcapHandle()
@@ -33,9 +40,9 @@ func (cfg *pcapConfig) startPcap() error {
 
 	for packet := range packetSource.Packets() {
 
-		// experiencing random SEGFAULT when grabbing netflow
-		// https://pkg.go.dev/github.com/google/gopacket#NetworkLayer
-		// so have to parse as string :(
+		//experiencing random SEGFAULT when grabbing netflow
+		//https://pkg.go.dev/github.com/google/gopacket#NetworkLayer
+		//so have to parse as string :(
 		netLayer = fmt.Sprintf("%+v", packet.NetworkLayer())
 		transportLayer = fmt.Sprintf("%+v", packet.TransportLayer())
 
@@ -47,6 +54,18 @@ func (cfg *pcapConfig) startPcap() error {
 		//some packets have no payload such as ACKs, just move to next iteration
 		if len(size) == 0 {
 			continue
+		}
+
+		sizeInt, _ := strconv.Atoi(size)
+
+		pack := packetData{
+			src:    srcIP,
+			dst:    dstIP,
+			length: sizeInt,
+		}
+
+		if err := store.send(pack); err != nil {
+			fmt.Println(err)
 		}
 	}
 
