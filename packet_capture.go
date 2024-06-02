@@ -58,7 +58,7 @@ func (cfg *pcapConfig) startPcap(store packetStore) error {
 
 		sizeInt, _ := strconv.Atoi(size)
 
-		pack := packetData{
+		pack := &packetData{
 			src:    srcIP,
 			dst:    dstIP,
 			length: sizeInt,

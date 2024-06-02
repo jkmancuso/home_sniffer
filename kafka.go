@@ -20,7 +20,7 @@ type kakfkaStore struct {
 	conn *kafka.Conn
 }
 
-func (store kakfkaStore) send(data packetData) error {
+func (store kakfkaStore) send(data *packetData) error {
 	return nil
 }
 
