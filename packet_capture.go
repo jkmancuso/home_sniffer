@@ -17,9 +17,9 @@ type pcapConfig struct {
 }
 
 type packetData struct {
-	src    string
-	dst    string
-	length int
+	Src    string
+	Dst    string
+	Length int
 }
 
 // Start new packet capture
@@ -59,9 +59,9 @@ func (cfg *pcapConfig) startPcap(store packetStore) error {
 		sizeInt, _ := strconv.Atoi(size)
 
 		pack := &packetData{
-			src:    srcIP,
-			dst:    dstIP,
-			length: sizeInt,
+			Src:    srcIP,
+			Dst:    dstIP,
+			Length: sizeInt,
 		}
 
 		if err := store.send(pack); err != nil {
