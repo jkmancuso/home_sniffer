@@ -1,0 +1,17 @@
+name: kafka container
+on: push
+
+jobs:
+  container-job:
+    runs-on: ubuntu-latest
+    services:
+      kafka:
+        image: bitnami/kafka
+        ports:
+            - 9092:9092
+        env:
+            KAFKA_CFG_NODE_ID: 0
+            KAFKA_CFG_PROCESS_ROLES: "controller,broker"
+            KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+            KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+            KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
