@@ -3,8 +3,8 @@ on: push
 jobs:
     test:
         runs-on: ubuntu-latest
-        container: node:10.18-jessie
-        
+        container: ubuntu-latest
+
         services:
             kafka-server:
               image: bitnami/kafka
