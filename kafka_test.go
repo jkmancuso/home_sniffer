@@ -12,7 +12,7 @@ func TestConnect(t *testing.T) {
 		partition: 0,
 		transport: "tcp",
 		host:      "127.0.0.1",
-		port:      9092,
+		port:      9094,
 	}
 
 	conn, err := kafkaCfg.connectKafka(context.Background())
