@@ -20,6 +20,7 @@ jobs:
             - uses: actions/setup-go@v4
               with:
                 go-version: 1.22.3
-            - run: sudo apt-get install libpcap-dev
+            - run: sudo apt-get install libpcap-dev telnet
+            - run: telnet localhost 9092
             - run: go test
             - run: go build
