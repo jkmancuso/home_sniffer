@@ -11,7 +11,7 @@ func TestConnect(t *testing.T) {
 		topic:     "my-topic",
 		partition: 0,
 		transport: "tcp",
-		host:      "kafka-server",
+		host:      "localhost",
 		port:      9092,
 	}
 
