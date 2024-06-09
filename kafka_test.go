@@ -11,7 +11,7 @@ func TestConnect(t *testing.T) {
 		topic:     "my-topic",
 		partition: 0,
 		transport: "tcp",
-		host:      "localhost",
+		host:      "127.0.0.1",
 		port:      9092,
 	}
 
