@@ -3,7 +3,7 @@ on: push
 jobs:
     test:
         runs-on: ubuntu-latest
-        container: ubuntu-latest
+        container: node:latest
 
         services:
             kafka-server:
