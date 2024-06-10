@@ -37,6 +37,10 @@ func (cfg *pcapConfig) startPcap(store packetStore) error {
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
 	var netLayer, transportLayer, srcIP, dstIP, size string
+	var i int64
+
+	batchSize := 10
+	packetBatch := []packetData{}
 
 	for packet := range packetSource.Packets() {
 
@@ -53,20 +57,31 @@ func (cfg *pcapConfig) startPcap(store packetStore) error {
 
 		//some packets have no payload such as ACKs, just move to next iteration
 		if len(size) == 0 {
+			fmt.Println("Dropping")
 			continue
 		}
 
+		i += 1
+
 		sizeInt, _ := strconv.Atoi(size)
 
-		pack := &packetData{
+		pack := packetData{
 			Src:    srcIP,
 			Dst:    dstIP,
 			Length: sizeInt,
 		}
 
-		if err := store.send(pack); err != nil {
-			fmt.Println(err)
+		packetBatch = append(packetBatch, pack)
+
+		if i%int64(batchSize) == 0 {
+
+			if err := store.sendBatch(packetBatch); err != nil {
+				fmt.Println(err)
+			}
+
+			packetBatch = packetBatch[:0]
 		}
+
 	}
 
 	return nil

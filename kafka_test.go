@@ -21,7 +21,7 @@ func TestConnect(t *testing.T) {
 		t.Fatalf("Err: %v\ncould not connect to kafka with params: %+v", err, kafkaCfg)
 	}
 
-	store := kakfkaStore{
+	store := kafkaStore{
 		cfg:  kafkaCfg,
 		conn: conn,
 	}
@@ -33,7 +33,7 @@ func TestConnect(t *testing.T) {
 
 	t.Run("subtest write", func(t *testing.T) {
 		t.Parallel()
-		err = store.send(&myPacket)
+		err = store.sendSingle(myPacket)
 
 		if err != nil {
 			t.Fatalf("Could not write to store %v", err)

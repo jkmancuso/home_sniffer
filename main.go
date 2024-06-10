@@ -20,7 +20,7 @@ func main() {
 		partition: 0,
 		transport: "tcp",
 		host:      "localhost",
-		port:      9092,
+		port:      9094,
 	}
 
 	conn, err := kafkaCfg.connectKafka(ctx)
@@ -29,7 +29,7 @@ func main() {
 		log.Fatalf("Err: %v\ncould not connect to kafka with params: %+v", err, kafkaCfg)
 	}
 
-	store := kakfkaStore{
+	store := kafkaStore{
 		cfg:  kafkaCfg,
 		conn: conn,
 	}
