@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/google/gopacket"
@@ -40,48 +43,61 @@ func (cfg *pcapConfig) startPcap(store io.Writer) error {
 
 	var netLayer, transportLayer, srcIP, dstIP, size string
 	var i int64
+	var pack packetData
 
-	batchSize := 10
+	batchSize := 1000
 	packetBatch := []packetData{}
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	for packet := range packetSource.Packets() {
 
-		//experiencing random SEGFAULT when grabbing netflow
-		//https://pkg.go.dev/github.com/google/gopacket#NetworkLayer
-		//so have to parse as string :(
-		netLayer = fmt.Sprintf("%+v", packet.NetworkLayer())
-		transportLayer = fmt.Sprintf("%+v", packet.TransportLayer())
+		select {
 
-		srcIP, dstIP = parseIPs(netLayer)
-		size = parseSize(transportLayer)
+		case <-sigCh:
+			json.NewEncoder(store).Encode(packetBatch)
+			fmt.Printf("Caught interrupt, finishing remaining processing: %d packets\n", len(packetBatch))
+			return nil
+		default:
+			//experiencing random SEGFAULT when grabbing netflow
+			//https://pkg.go.dev/github.com/google/gopacket#NetworkLayer
+			//so have to parse as string :(
+			netLayer = fmt.Sprintf("%+v", packet.NetworkLayer())
+			transportLayer = fmt.Sprintf("%+v", packet.TransportLayer())
 
-		fmt.Printf("src:%v,dst:%v,size:%v\n", srcIP, dstIP, size)
+			srcIP, dstIP = parseIPs(netLayer)
+			size = parseSize(transportLayer)
 
-		//some packets have no payload such as ACKs, just move to next iteration
-		if len(size) == 0 {
-			fmt.Println("Dropping")
-			continue
-		}
+			fmt.Printf("src:%v,dst:%v,size:%v\n", srcIP, dstIP, size)
 
-		i += 1
-
-		sizeInt, _ := strconv.Atoi(size)
-
-		pack := packetData{
-			Src:    srcIP,
-			Dst:    dstIP,
-			Length: sizeInt,
-		}
-
-		packetBatch = append(packetBatch, pack)
-
-		if i%int64(batchSize) == 0 {
-
-			if err := json.NewEncoder(store).Encode(packetBatch); err != nil {
-				fmt.Println(err)
+			//some packets have no payload such as ACKs, just move to next iteration
+			if len(size) == 0 {
+				fmt.Println("Dropping")
+				continue
 			}
 
-			packetBatch = packetBatch[:0]
+			i += 1
+
+			sizeInt, _ := strconv.Atoi(size)
+
+			pack = packetData{
+				Src:    srcIP,
+				Dst:    dstIP,
+				Length: sizeInt,
+			}
+
+			packetBatch = append(packetBatch, pack)
+
+			if i%int64(batchSize) == 0 {
+
+				if err := json.NewEncoder(store).Encode(packetBatch); err != nil {
+					fmt.Println(err)
+				}
+
+				packetBatch = packetBatch[:0]
+			}
+
 		}
 
 	}
