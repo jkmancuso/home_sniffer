@@ -32,9 +32,11 @@ func TestConnect(t *testing.T) {
 		Length: 1,
 	}
 
+	myPackets := []packetData{myPacket}
+
 	t.Run("subtest write", func(t *testing.T) {
 		t.Parallel()
-		if err := json.NewEncoder(&store).Encode(myPacket); err != nil {
+		if err := json.NewEncoder(&store).Encode(myPackets); err != nil {
 			t.Fatalf("Could not write to store %v", err)
 		}
 
