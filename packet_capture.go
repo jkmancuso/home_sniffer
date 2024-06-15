@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"time"
 
@@ -23,7 +25,7 @@ type packetData struct {
 }
 
 // Start new packet capture
-func (cfg *pcapConfig) startPcap(store packetStore) error {
+func (cfg *pcapConfig) startPcap(store io.Writer) error {
 	fmt.Printf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.newPcapHandle()
@@ -75,7 +77,7 @@ func (cfg *pcapConfig) startPcap(store packetStore) error {
 
 		if i%int64(batchSize) == 0 {
 
-			if err := store.sendBatch(packetBatch); err != nil {
+			if err := json.NewEncoder(store).Encode(packetBatch); err != nil {
 				fmt.Println(err)
 			}
 

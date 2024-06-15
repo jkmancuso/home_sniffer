@@ -41,7 +41,7 @@ func main() {
 		timeout: pcap.BlockForever,
 	}
 
-	if err := captureCfg.startPcap(store); err != nil {
+	if err := captureCfg.startPcap(&store); err != nil {
 		log.Fatalf("could not start pcap %v", err)
 	}
 

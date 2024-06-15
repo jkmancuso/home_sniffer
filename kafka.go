@@ -21,53 +21,41 @@ type kafkaStore struct {
 	conn *kafka.Conn
 }
 
-// Send one msg at a time to kafka, bit inefficient
-func (store kafkaStore) sendSingle(data packetData) error {
-	kafkaMsg, err := json.Marshal(data)
-
-	if err != nil {
-		fmt.Printf("Error marshalling payload, %v", err)
-		return err
-	}
-
-	_, err = store.conn.Write(kafkaMsg)
-
-	if err != nil {
-		fmt.Printf("Error sending payload  to kafka, %v", err)
-		return err
-	}
-
-	return nil
-}
-
-// Send multiple msg at a time to kafka, more efficient
-func (store kafkaStore) sendBatch(data []packetData) error {
-
+// implement io.writer
+func (store *kafkaStore) Write(data []byte) (int, error) {
+	var packets []packetData
 	var kafkaMsgs []kafka.Message
+	var err error
+	var msgBytes []byte
+	var numBytes int
 
-	for _, payload := range data {
+	if err := json.Unmarshal(data, &packets); err != nil {
+		fmt.Printf("Error unmarshalling payload, %v", err)
+		return 0, err
+	}
 
-		msgBytes, err := json.Marshal(payload)
+	for _, payload := range packets {
+		msgBytes, err = json.Marshal(payload)
 
 		if err != nil {
 			fmt.Printf("Error marshalling payload, %v", err)
-			return err
+			return 0, err
 		}
 
 		kafkaMsgs = append(kafkaMsgs, kafka.Message{Value: msgBytes})
-
 	}
 
-	_, err := store.conn.WriteMessages(kafkaMsgs...)
+	numBytes, err = store.conn.WriteMessages(kafkaMsgs...)
 
 	if err != nil {
-		fmt.Printf("Error sending payload  to kafka, %v", err)
-		return err
+		fmt.Println(err)
+		return 0, nil
 	}
 
-	return nil
+	return numBytes, nil
 }
 
+// return a kafka connection handle
 func (cfg *kafkaConfig) connectKafka(ctx context.Context) (*kafka.Conn, error) {
 
 	fmt.Printf("Connecting to kafka\n%+v", cfg)

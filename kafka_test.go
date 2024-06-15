@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 )
 
@@ -33,9 +34,7 @@ func TestConnect(t *testing.T) {
 
 	t.Run("subtest write", func(t *testing.T) {
 		t.Parallel()
-		err = store.sendSingle(myPacket)
-
-		if err != nil {
+		if err := json.NewEncoder(&store).Encode(myPacket); err != nil {
 			t.Fatalf("Could not write to store %v", err)
 		}
 
