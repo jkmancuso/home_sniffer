@@ -15,24 +15,8 @@ func main() {
 	device := flag.String("device", "br0", "")
 	flag.Parse()
 
-	kafkaCfg := kafkaConfig{
-		topic:     "my-topic",
-		partition: 0,
-		transport: "tcp",
-		host:      "localhost",
-		port:      9094,
-	}
-
-	conn, err := kafkaCfg.connectKafka(ctx)
-
-	if err != nil {
-		log.Fatalf("Err: %v\ncould not connect to kafka with params: %+v", err, kafkaCfg)
-	}
-
-	store := kafkaStore{
-		cfg:  kafkaCfg,
-		conn: conn,
-	}
+	store := newKafkaStore(ctx)
+	//store := initFileStore(ctx)
 
 	captureCfg := pcapConfig{
 		device:  *device,

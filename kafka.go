@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -19,6 +21,44 @@ type kafkaConfig struct {
 type kafkaStore struct {
 	cfg  kafkaConfig
 	conn *kafka.Conn
+}
+
+func newKafkaStore(ctx context.Context) kafkaStore {
+	kafkaCfg := newKafkaCfg(ctx)
+
+	conn, err := kafkaCfg.connectKafka(ctx)
+
+	if err != nil {
+		panic(fmt.Sprintf("Err: %v\ncould not connect to kafka with params: %+v", err, kafkaCfg))
+	}
+
+	return kafkaStore{
+		cfg:  kafkaCfg,
+		conn: conn,
+	}
+}
+
+func newKafkaCfg(_ context.Context) kafkaConfig {
+	loadEnv()
+
+	topic := os.Getenv("KAFKA_TOPIC")
+	partition, _ := strconv.Atoi(os.Getenv("KAFKA_PARTITION"))
+	transport := os.Getenv("KAFKA_TRANSPORT")
+	host := os.Getenv("KAFKA_HOST")
+	port, _ := strconv.Atoi(os.Getenv("KAFKA_PORT"))
+
+	kafkaCfg := kafkaConfig{
+		topic:     topic,
+		partition: partition,
+		transport: transport,
+		host:      host,
+		port:      port,
+	}
+
+	fmt.Printf("Loading kafka cfg: %+v\n", kafkaCfg)
+
+	return kafkaCfg
+
 }
 
 // implement io.writer

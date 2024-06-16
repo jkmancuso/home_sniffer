@@ -2,6 +2,8 @@ package main
 
 import (
 	"regexp"
+
+	"github.com/joho/godotenv"
 )
 
 func parseIPs(payload string) (string, string) {
@@ -26,4 +28,8 @@ func parseSize(payload string) string {
 
 	return matches[1]
 
+}
+
+func loadEnv() {
+	godotenv.Load()
 }
