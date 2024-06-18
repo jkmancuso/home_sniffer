@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type ipInfo struct {
@@ -25,7 +27,7 @@ func GetIPLookupInfo(ipAddress string) (ipInfo, error) {
 	info, err := newIPInfo(ipAddress)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Errorf("Could not get ip info: %v", err)
 		return ipInfo{}, err
 	}
 
@@ -37,13 +39,15 @@ func GetIPLookupInfo(ipAddress string) (ipInfo, error) {
 	info.setReverseDNSName()
 	info.setCompanyName()
 
+	log.Debugf("Returning ip info: %+v", info)
+
 	return info, nil
 }
 
 func newIPInfo(ipAddress string) (ipInfo, error) {
 
 	if result := net.ParseIP(ipAddress); result == nil {
-		fmt.Printf("%v is not a valid ip", ipAddress)
+		log.Errorf("%v is not a valid ip", ipAddress)
 		return ipInfo{}, nil
 	}
 
@@ -74,16 +78,19 @@ func (info *ipInfo) setReverseDNSName() {
 
 	//not fatal
 	if err != nil || len(addresses) == 0 {
-		fmt.Println(err)
+		log.Errorf("Error looking up %v\n%v", info.ipv4, err)
 		reverseDNSName = ""
 	} else {
 		reverseDNSName = addresses[0]
 	}
 
+	log.Debugf("Got reverseDNS Name: %v", reverseDNSName)
+
 	info.reverseDNS = reverseDNSName
 
 }
 
+// get name of company from registrar
 func (info *ipInfo) setCompanyName() {
 	var companyName string
 
@@ -91,15 +98,18 @@ func (info *ipInfo) setCompanyName() {
 
 	//not fatal
 	if err != nil {
-		fmt.Println(err)
+		log.Errorf("Error query registry %v", err)
 		companyName = ""
 	} else {
 		companyName = result.Name
 	}
 
+	log.Debugf("Got company name: %v", companyName)
+
 	info.company = companyName
 }
 
+// query arin or equivalent registrar for info
 func queryRegistry(ipAddress string) (registryResult, error) {
 	loadEnv()
 
@@ -108,27 +118,32 @@ func queryRegistry(ipAddress string) (registryResult, error) {
 	baseURL := os.Getenv("ARIN_URL")
 	url := fmt.Sprintf("%s%s", baseURL, ipAddress)
 
-	fmt.Println("Pulling from arin")
+	log.Debugf("Query registry %s:", url)
+
 	response, err := http.Get(url)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 		return result, err
-
 	}
-	fmt.Println("success")
+
+	log.Debug("Success!")
 
 	var buff []byte
 
 	if _, err = response.Body.Read(buff); err != nil {
-		fmt.Println(err)
+		log.Errorf("Failed to read response:\n%+v\n%v", response, err)
 		return result, err
 	}
 
+	defer response.Body.Close()
+
 	if err = json.Unmarshal(buff, &result); err != nil {
-		fmt.Println(err)
+		log.Errorf("Unable to unmarshall: %v", err)
 		return result, err
 	}
+
+	log.Debugf("Registry result: %+v", result)
 
 	return result, nil
 

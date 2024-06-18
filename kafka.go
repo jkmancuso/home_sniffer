@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/segmentio/kafka-go"
+	log "github.com/sirupsen/logrus"
 )
 
 type kafkaConfig struct {
@@ -29,13 +30,17 @@ func newKafkaStore(ctx context.Context) kafkaStore {
 	conn, err := kafkaCfg.connectKafka(ctx)
 
 	if err != nil {
-		panic(fmt.Sprintf("Err: %v\ncould not connect to kafka with params: %+v", err, kafkaCfg))
+		log.Panic(fmt.Sprintf("Err: %v\ncould not connect to kafka with params: %+v", err, kafkaCfg))
 	}
 
-	return kafkaStore{
+	kStore := kafkaStore{
 		cfg:  kafkaCfg,
 		conn: conn,
 	}
+
+	log.Debugf("Returning kafka store: %+v", kStore)
+
+	return kStore
 }
 
 func newKafkaCfg(_ context.Context) kafkaConfig {
@@ -55,7 +60,7 @@ func newKafkaCfg(_ context.Context) kafkaConfig {
 		port:      port,
 	}
 
-	fmt.Printf("Loading kafka cfg: %+v\n", kafkaCfg)
+	log.Debugf("Loading kafka cfg: %+v\n", kafkaCfg)
 
 	return kafkaCfg
 
@@ -70,7 +75,7 @@ func (store *kafkaStore) Write(data []byte) (int, error) {
 	var numBytes int
 
 	if err := json.Unmarshal(data, &packets); err != nil {
-		fmt.Printf("Error unmarshalling payload, %v", err)
+		log.Errorf("Error unmarshalling payload, %v", err)
 		return 0, err
 	}
 
@@ -78,7 +83,7 @@ func (store *kafkaStore) Write(data []byte) (int, error) {
 		msgBytes, err = json.Marshal(payload)
 
 		if err != nil {
-			fmt.Printf("Error marshalling payload, %v", err)
+			log.Errorf("Error marshalling payload, %v", err)
 			return 0, err
 		}
 
@@ -88,9 +93,11 @@ func (store *kafkaStore) Write(data []byte) (int, error) {
 	numBytes, err = store.conn.WriteMessages(kafkaMsgs...)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Errorf("Error writing msg to kafka: %v", err)
 		return 0, nil
 	}
+
+	log.Debugf("Successfully wrote %d bytes of kafka msg", numBytes)
 
 	return numBytes, nil
 }
@@ -98,7 +105,7 @@ func (store *kafkaStore) Write(data []byte) (int, error) {
 // return a kafka connection handle
 func (cfg *kafkaConfig) connectKafka(ctx context.Context) (*kafka.Conn, error) {
 
-	fmt.Printf("Connecting to kafka\n%+v", cfg)
+	log.Debugf("Connecting to kafka\n%+v", cfg)
 	conn, err := kafka.DialLeader(ctx,
 		cfg.transport,
 		fmt.Sprintf("%s:%d", cfg.host, cfg.port),
@@ -106,11 +113,11 @@ func (cfg *kafkaConfig) connectKafka(ctx context.Context) (*kafka.Conn, error) {
 		cfg.partition)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Errorf("Error connecting to kakfa: %v", err)
 		return nil, err
 	}
 
-	fmt.Println("Success")
+	log.Debugf("Success")
 
 	return conn, err
 

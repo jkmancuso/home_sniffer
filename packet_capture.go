@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
+	log "github.com/sirupsen/logrus"
 )
 
 type pcapConfig struct {
@@ -29,7 +31,7 @@ type packetData struct {
 
 // Start new packet capture
 func (cfg *pcapConfig) startPcap(store io.Writer) error {
-	fmt.Printf("Starting packet cap on device %v\n", cfg.device)
+	log.Debugf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.newPcapHandle()
 
@@ -57,7 +59,7 @@ func (cfg *pcapConfig) startPcap(store io.Writer) error {
 
 		case <-sigCh:
 			json.NewEncoder(store).Encode(packetBatch)
-			fmt.Printf("Caught interrupt, finishing remaining processing: %d packets\n", len(packetBatch))
+			log.Printf("Caught interrupt, finishing remaining processing: %d packets\n", len(packetBatch))
 			return nil
 		default:
 			//experiencing random SEGFAULT when grabbing netflow
@@ -69,11 +71,11 @@ func (cfg *pcapConfig) startPcap(store io.Writer) error {
 			srcIP, dstIP = parseIPs(netLayer)
 			size = parseSize(transportLayer)
 
-			fmt.Printf("src:%v,dst:%v,size:%v\n", srcIP, dstIP, size)
+			log.Debugf("src:%v,dst:%v,size:%v\n", srcIP, dstIP, size)
 
 			//some packets have no payload such as ACKs, just move to next iteration
 			if len(size) == 0 {
-				fmt.Println("Dropping")
+				log.Debug("Dropping")
 				continue
 			}
 
@@ -90,9 +92,10 @@ func (cfg *pcapConfig) startPcap(store io.Writer) error {
 			packetBatch = append(packetBatch, pack)
 
 			if i%int64(batchSize) == 0 {
+				log.Debug("Writing batch")
 
 				if err := json.NewEncoder(store).Encode(packetBatch); err != nil {
-					fmt.Println(err)
+					log.Errorf("Error writing to kafka: %v", err)
 				}
 
 				packetBatch = packetBatch[:0]
@@ -130,7 +133,7 @@ func (cfg *pcapConfig) newPcapHandle() (*pcap.Handle, error) {
 
 // Helper function to check that the selected device (ie br0 or eth0) is valid on your machine
 func (cfg *pcapConfig) validateInterfaces() error {
-	fmt.Println("Confirming valid devices")
+	log.Println("Confirming valid devices")
 
 	selectedDevice := cfg.device
 
@@ -142,18 +145,18 @@ func (cfg *pcapConfig) validateInterfaces() error {
 
 	for _, ethInterface := range ifs {
 		if ethInterface.Name == selectedDevice {
-			fmt.Printf("Found device %v, checking IP...\n", selectedDevice)
+			log.Printf("Found device %v, checking IP...\n", selectedDevice)
 
 			ips := ethInterface.Addresses
 
 			if len(ips) > 0 {
-				fmt.Printf("IP: %v", ips)
+				log.Printf("IP: %v", ips)
 				return nil
 			}
 
 		}
 	}
 
-	return fmt.Errorf("interface is not valid %v", selectedDevice)
+	return errors.New("interface is not valid ")
 
 }
