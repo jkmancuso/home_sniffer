@@ -27,6 +27,8 @@ type registryResult struct {
 // main function to pack all the lookup info
 func GetIPLookupInfo(ipAddress string, cache Cache, ctx context.Context) (ipInfo, error) {
 
+	var reverseDNSName, companyName string
+
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 
@@ -44,9 +46,20 @@ func GetIPLookupInfo(ipAddress string, cache Cache, ctx context.Context) (ipInfo
 
 	info, found := cache.Get(ctx, info.Ipv4)
 
+	// if its not in cache, do the manual lookup*, update the cache, then return the struct
 	if !found {
-		info.lookupReverseDNSName()
-		info.lookupCompanyName()
+		log.Debugf("Did not find IP %v in cache", info.Ipv4)
+
+		reverseDNSName = info.lookupReverseDNSName()
+		companyName = info.lookupCompanyName()
+
+		_ = cache.Set(ctx, "placeholder")
+
+		info.setCompanyName(companyName)
+		info.setReverseDNSName(reverseDNSName)
+
+	} else {
+		log.Debugf("Found IP %v in cache!", info.Ipv4)
 	}
 
 	log.Debugf("Returning ip info: %+v", info)
@@ -81,7 +94,7 @@ func (info *ipInfo) isLocalLAN() bool {
 
 }
 
-func (info *ipInfo) lookupReverseDNSName() {
+func (info *ipInfo) lookupReverseDNSName() string {
 	var reverseDNSName string
 
 	addresses, err := net.LookupAddr(info.Ipv4)
@@ -96,12 +109,12 @@ func (info *ipInfo) lookupReverseDNSName() {
 
 	log.Debugf("Got reverseDNS Name: %v", reverseDNSName)
 
-	info.ReverseDNS = reverseDNSName
+	return reverseDNSName
 
 }
 
 // get name of company from registrar
-func (info *ipInfo) lookupCompanyName() {
+func (info *ipInfo) lookupCompanyName() string {
 	var companyName string
 
 	result, err := queryRegistry(info.Ipv4)
@@ -116,7 +129,15 @@ func (info *ipInfo) lookupCompanyName() {
 
 	log.Debugf("Got company name: %v", companyName)
 
-	info.Company = companyName
+	return companyName
+}
+
+func (info *ipInfo) setCompanyName(name string) {
+	info.Company = name
+}
+
+func (info *ipInfo) setReverseDNSName(name string) {
+	info.ReverseDNS = name
 }
 
 // query arin or equivalent registrar for info
