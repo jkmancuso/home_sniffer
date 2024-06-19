@@ -26,9 +26,16 @@ func TestConnect(t *testing.T) {
 		cfg:  kafkaCfg,
 		conn: conn,
 	}
+
+	testipInfo := ipInfo{
+		Ipv4:       "1.2.3.4",
+		Company:    "mycompany",
+		ReverseDNS: "reverse.mycompany.com",
+	}
+
 	myPacket := packetData{
-		Src:    "1.2.3.4",
-		Dst:    "5.6.7.8",
+		Src:    testipInfo,
+		Dst:    testipInfo,
 		Length: 1,
 	}
 

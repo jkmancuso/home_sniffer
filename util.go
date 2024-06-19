@@ -1,9 +1,11 @@
 package main
 
 import (
+	"os"
 	"regexp"
 
 	"github.com/joho/godotenv"
+	log "github.com/sirupsen/logrus"
 )
 
 func parseIPs(payload string) (string, string) {
@@ -32,4 +34,19 @@ func parseSize(payload string) string {
 
 func loadEnv() {
 	godotenv.Load()
+}
+
+func setLogger() {
+	loadEnv()
+
+	level, err := log.ParseLevel(os.Getenv("LOGLEVEL"))
+
+	if err != nil {
+		log.Panic("Unable to recoghnize logging")
+	}
+
+	log.SetLevel(level)
+
+	log.Printf("log level set to: %v", level.String())
+
 }

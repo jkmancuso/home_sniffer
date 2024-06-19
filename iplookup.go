@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -12,9 +13,9 @@ import (
 )
 
 type ipInfo struct {
-	ipv4       string
-	reverseDNS string
-	company    string
+	Ipv4       string
+	ReverseDNS string
+	Company    string
 }
 
 type registryResult struct {
@@ -24,7 +25,7 @@ type registryResult struct {
 // main function to pack all the lookup info
 func GetIPLookupInfo(ipAddress string) (ipInfo, error) {
 
-	info, err := newIPInfo(ipAddress)
+	info, err := newIPinfo(ipAddress)
 
 	if err != nil {
 		log.Errorf("Could not get ip info: %v", err)
@@ -44,7 +45,7 @@ func GetIPLookupInfo(ipAddress string) (ipInfo, error) {
 	return info, nil
 }
 
-func newIPInfo(ipAddress string) (ipInfo, error) {
+func newIPinfo(ipAddress string) (ipInfo, error) {
 
 	if result := net.ParseIP(ipAddress); result == nil {
 		log.Errorf("%v is not a valid ip", ipAddress)
@@ -52,7 +53,7 @@ func newIPInfo(ipAddress string) (ipInfo, error) {
 	}
 
 	resultIP := ipInfo{
-		ipv4: ipAddress,
+		Ipv4: ipAddress,
 	}
 
 	return resultIP, nil
@@ -61,7 +62,7 @@ func newIPInfo(ipAddress string) (ipInfo, error) {
 
 // basically....is the first octet 192
 func (info *ipInfo) isLocalLAN() bool {
-	octets := strings.Split(info.ipv4, ".")
+	octets := strings.Split(info.Ipv4, ".")
 
 	if octets[0] == "192" || octets[0] == "127" {
 		return true
@@ -74,11 +75,11 @@ func (info *ipInfo) isLocalLAN() bool {
 func (info *ipInfo) setReverseDNSName() {
 	var reverseDNSName string
 
-	addresses, err := net.LookupAddr(info.ipv4)
+	addresses, err := net.LookupAddr(info.Ipv4)
 
 	//not fatal
 	if err != nil || len(addresses) == 0 {
-		log.Errorf("Error looking up %v\n%v", info.ipv4, err)
+		log.Errorf("Error looking up %v\n%v", info.Ipv4, err)
 		reverseDNSName = ""
 	} else {
 		reverseDNSName = addresses[0]
@@ -86,7 +87,7 @@ func (info *ipInfo) setReverseDNSName() {
 
 	log.Debugf("Got reverseDNS Name: %v", reverseDNSName)
 
-	info.reverseDNS = reverseDNSName
+	info.ReverseDNS = reverseDNSName
 
 }
 
@@ -94,7 +95,7 @@ func (info *ipInfo) setReverseDNSName() {
 func (info *ipInfo) setCompanyName() {
 	var companyName string
 
-	result, err := queryRegistry(info.ipv4)
+	result, err := queryRegistry(info.Ipv4)
 
 	//not fatal
 	if err != nil {
@@ -106,7 +107,7 @@ func (info *ipInfo) setCompanyName() {
 
 	log.Debugf("Got company name: %v", companyName)
 
-	info.company = companyName
+	info.Company = companyName
 }
 
 // query arin or equivalent registrar for info
@@ -129,17 +130,19 @@ func queryRegistry(ipAddress string) (registryResult, error) {
 
 	log.Debug("Success!")
 
-	var buff []byte
+	body, err := io.ReadAll(response.Body)
 
-	if _, err = response.Body.Read(buff); err != nil {
-		log.Errorf("Failed to read response:\n%+v\n%v", response, err)
+	if err != nil {
+		log.Errorf("Failed to read response: %v", err)
 		return result, err
 	}
 
+	//log.Debugf("Got response: %s", body)
+
 	defer response.Body.Close()
 
-	if err = json.Unmarshal(buff, &result); err != nil {
-		log.Errorf("Unable to unmarshall: %v", err)
+	if err = json.Unmarshal(body, &result); err != nil {
+		log.Errorf("Unable to unmarshall: %v\n%s", err, body)
 		return result, err
 	}
 

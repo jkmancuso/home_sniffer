@@ -24,8 +24,8 @@ type pcapConfig struct {
 }
 
 type packetData struct {
-	Src    string
-	Dst    string
+	Src    ipInfo
+	Dst    ipInfo
 	Length int
 }
 
@@ -47,7 +47,7 @@ func (cfg *pcapConfig) startPcap(store io.Writer) error {
 	var i int64
 	var pack packetData
 
-	batchSize := 1000
+	batchSize := 100
 	packetBatch := []packetData{}
 
 	sigCh := make(chan os.Signal, 1)
@@ -74,7 +74,7 @@ func (cfg *pcapConfig) startPcap(store io.Writer) error {
 			log.Debugf("src:%v,dst:%v,size:%v\n", srcIP, dstIP, size)
 
 			//some packets have no payload such as ACKs, just move to next iteration
-			if len(size) == 0 {
+			if len(size) == 0 || len(srcIP) == 0 || len(dstIP) == 0 {
 				log.Debug("Dropping")
 				continue
 			}
@@ -83,11 +83,20 @@ func (cfg *pcapConfig) startPcap(store io.Writer) error {
 
 			sizeInt, _ := strconv.Atoi(size)
 
+			src, errSrc := GetIPLookupInfo(srcIP)
+			dst, errDst := GetIPLookupInfo(dstIP)
+
+			if errSrc != nil || errDst != nil {
+				log.Warnf("Error looking up ip info: %v %v", errSrc, errDst)
+			}
+
 			pack = packetData{
-				Src:    srcIP,
-				Dst:    dstIP,
+				Src:    src,
+				Dst:    dst,
 				Length: sizeInt,
 			}
+
+			log.Debugf("Queueing up packet: %v", pack)
 
 			packetBatch = append(packetBatch, pack)
 

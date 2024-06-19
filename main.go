@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 
 	"github.com/google/gopacket/pcap"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 
 	ctx := context.Background()
+	setLogger()
 
 	device := flag.String("device", "br0", "")
 	flag.Parse()
