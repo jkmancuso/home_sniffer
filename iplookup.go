@@ -23,7 +23,7 @@ type registryResult struct {
 }
 
 // main function to pack all the lookup info
-func GetIPLookupInfo(ipAddress string) (ipInfo, error) {
+func GetIPLookupInfo(ipAddress string, cache Cache) (ipInfo, error) {
 
 	info, err := newIPinfo(ipAddress)
 

@@ -16,8 +16,10 @@ func main() {
 	device := flag.String("device", "br0", "")
 	flag.Parse()
 
-	store := newKafkaStore(ctx)
-	//store := initFileStore(ctx)
+	store := NewKafkaStore(ctx)
+	//store := newFileStore(ctx)
+
+	cache := NewRedisCache(ctx)
 
 	captureCfg := pcapConfig{
 		device:  *device,
@@ -26,7 +28,7 @@ func main() {
 		timeout: pcap.BlockForever,
 	}
 
-	if err := captureCfg.startPcap(&store); err != nil {
+	if err := captureCfg.startPcap(&store, &cache); err != nil {
 		log.Fatalf("could not start pcap %v", err)
 	}
 

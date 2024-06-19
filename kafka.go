@@ -24,7 +24,7 @@ type kafkaStore struct {
 	conn *kafka.Conn
 }
 
-func newKafkaStore(ctx context.Context) kafkaStore {
+func NewKafkaStore(ctx context.Context) kafkaStore {
 	kafkaCfg := newKafkaCfg(ctx)
 
 	conn, err := kafkaCfg.connectKafka(ctx)
