@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -23,7 +25,10 @@ type registryResult struct {
 }
 
 // main function to pack all the lookup info
-func GetIPLookupInfo(ipAddress string, cache Cache) (ipInfo, error) {
+func GetIPLookupInfo(ipAddress string, cache Cache, ctx context.Context) (ipInfo, error) {
+
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
 
 	info, err := newIPinfo(ipAddress)
 
@@ -37,8 +42,12 @@ func GetIPLookupInfo(ipAddress string, cache Cache) (ipInfo, error) {
 		return info, nil
 	}
 
-	info.setReverseDNSName()
-	info.setCompanyName()
+	info, found := cache.Get(ctx, info.Ipv4)
+
+	if !found {
+		info.lookupReverseDNSName()
+		info.lookupCompanyName()
+	}
 
 	log.Debugf("Returning ip info: %+v", info)
 
@@ -72,7 +81,7 @@ func (info *ipInfo) isLocalLAN() bool {
 
 }
 
-func (info *ipInfo) setReverseDNSName() {
+func (info *ipInfo) lookupReverseDNSName() {
 	var reverseDNSName string
 
 	addresses, err := net.LookupAddr(info.Ipv4)
@@ -92,7 +101,7 @@ func (info *ipInfo) setReverseDNSName() {
 }
 
 // get name of company from registrar
-func (info *ipInfo) setCompanyName() {
+func (info *ipInfo) lookupCompanyName() {
 	var companyName string
 
 	result, err := queryRegistry(info.Ipv4)

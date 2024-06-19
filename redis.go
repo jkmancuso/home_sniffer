@@ -51,7 +51,7 @@ func (r *redisCfg) newRedisClient() *redis.Client {
 	return rdb
 }
 
-func NewRedisCache(_ context.Context) redisCache {
+func NewRedisCache() redisCache {
 	cfg := newRedisCfg()
 	client := cfg.newRedisClient()
 
@@ -64,10 +64,10 @@ func NewRedisCache(_ context.Context) redisCache {
 
 }
 
-func (r *redisCache) Get(key string) string {
-	return ""
+func (r *redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
+	return ipInfo{}, true
 }
 
-func (r *redisCache) Set(key string) error {
+func (r *redisCache) Set(ctx context.Context, key string) error {
 	return nil
 }

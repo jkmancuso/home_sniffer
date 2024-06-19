@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,7 +31,7 @@ type packetData struct {
 }
 
 // Start new packet capture
-func (cfg *pcapConfig) startPcap(store io.Writer, cache Cache) error {
+func (cfg *pcapConfig) startPcap(store io.Writer, cache Cache, ctx context.Context) error {
 	log.Debugf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.newPcapHandle()
@@ -83,8 +84,8 @@ func (cfg *pcapConfig) startPcap(store io.Writer, cache Cache) error {
 
 			sizeInt, _ := strconv.Atoi(size)
 
-			src, errSrc := GetIPLookupInfo(srcIP, cache)
-			dst, errDst := GetIPLookupInfo(dstIP, cache)
+			src, errSrc := GetIPLookupInfo(srcIP, cache, ctx)
+			dst, errDst := GetIPLookupInfo(dstIP, cache, ctx)
 
 			if errSrc != nil || errDst != nil {
 				log.Warnf("Error looking up ip info: %v %v", errSrc, errDst)
