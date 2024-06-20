@@ -72,13 +72,13 @@ func (cfg *pcapConfig) startPcap(store io.Writer, cache Cache, ctx context.Conte
 			srcIP, dstIP = parseIPs(netLayer)
 			size = parseSize(transportLayer)
 
-			log.Debugf("src:%v,dst:%v,size:%v\n", srcIP, dstIP, size)
-
 			//some packets have no payload such as ACKs, just move to next iteration
 			if len(size) == 0 || len(srcIP) == 0 || len(dstIP) == 0 {
-				log.Debug("Dropping")
+				//log.Debug("Dropping")
 				continue
 			}
+
+			log.Debugf("src:%v,dst:%v,size:%v\n", srcIP, dstIP, size)
 
 			i += 1
 

@@ -24,10 +24,23 @@ type registryResult struct {
 	Name string `json:"name"`
 }
 
+func (info *ipInfo) String() string {
+	infoBytes, err := json.Marshal(info)
+
+	if err != nil {
+		return ""
+	}
+
+	return string(infoBytes)
+
+}
+
 // main function to pack all the lookup info
 func GetIPLookupInfo(ipAddress string, cache Cache, ctx context.Context) (ipInfo, error) {
 
 	var reverseDNSName, companyName string
+
+	log.Debugf("Getting ip info for %v", ipAddress)
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
@@ -44,26 +57,30 @@ func GetIPLookupInfo(ipAddress string, cache Cache, ctx context.Context) (ipInfo
 		return info, nil
 	}
 
-	info, found := cache.Get(ctx, info.Ipv4)
+	//info, found := cache.Get(ctx, info.Ipv4)
 
-	// if its not in cache, do the manual lookup*, update the cache, then return the struct
-	if !found {
+	found := false
+
+	if found { // if its in the cache you're good. just return info
+		log.Debugf("Found IP %v in cache!", info.Ipv4)
+	} else { // if its not in cache...
 		log.Debugf("Did not find IP %v in cache", info.Ipv4)
 
+		// do the manual lookup*
 		reverseDNSName = info.lookupReverseDNSName()
 		companyName = info.lookupCompanyName()
 
-		_ = cache.Set(ctx, "placeholder")
-
+		// update the info struct
 		info.setCompanyName(companyName)
 		info.setReverseDNSName(reverseDNSName)
 
-	} else {
-		log.Debugf("Found IP %v in cache!", info.Ipv4)
+		// update the cache
+		_ = cache.Set(ctx, info.Ipv4, info.String())
 	}
 
 	log.Debugf("Returning ip info: %+v", info)
 
+	// then return the info struct
 	return info, nil
 }
 
@@ -77,6 +94,8 @@ func newIPinfo(ipAddress string) (ipInfo, error) {
 	resultIP := ipInfo{
 		Ipv4: ipAddress,
 	}
+
+	log.Debugf("Created new ipinfo struct %v", resultIP)
 
 	return resultIP, nil
 

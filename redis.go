@@ -65,9 +65,20 @@ func NewRedisCache() redisCache {
 }
 
 func (r *redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
-	return ipInfo{}, true
+	//result, _ := r.client.Get(ctx,key).Result()
+
+	return ipInfo{}, false
 }
 
-func (r *redisCache) Set(ctx context.Context, key string) error {
-	return nil
+func (r *redisCache) Set(ctx context.Context, key string, val string) error {
+	log.Debugf("Adding to redis. key: %v, value: %v", key, val)
+
+	err := r.client.JSONSet(ctx, key, "$", val).Err()
+
+	if err != nil {
+		log.Errorf("Error sending JSON to redis: \nkey: %v\nval: %v\nerr: %v", key, val, err)
+		return err
+	} else {
+		return nil
+	}
 }
