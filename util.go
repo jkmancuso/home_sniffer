@@ -46,6 +46,11 @@ func setLogger() {
 	}
 
 	log.SetLevel(level)
+	log.SetFormatter(&log.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	})
+	//log.SetReportCaller(true)
 
 	log.Printf("log level set to: %v", level.String())
 

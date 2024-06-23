@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"strconv"
 
@@ -65,9 +66,29 @@ func NewRedisCache() redisCache {
 }
 
 func (r *redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
-	//result, _ := r.client.Get(ctx,key).Result()
 
-	return ipInfo{}, false
+	resultipInfo := ipInfo{
+		Ipv4: key,
+	}
+
+	result, err := r.client.JSONGet(ctx, key).Result()
+
+	if err != nil {
+		log.Errorf("Got error from redis getting key %v\n%v", key, err)
+		return resultipInfo, false
+	}
+
+	err = json.Unmarshal([]byte(result), &resultipInfo)
+
+	if err != nil {
+		log.Errorf("Cannot unmarshall string from redis: %v\n%v", key, err)
+		return resultipInfo, false
+	}
+
+	log.Debugf("Successfully pulled cache entry %v from redis", resultipInfo)
+
+	return resultipInfo, true
+
 }
 
 func (r *redisCache) Set(ctx context.Context, key string, val string) error {
