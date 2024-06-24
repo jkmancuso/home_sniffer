@@ -10,24 +10,24 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type redisCfg struct {
+type RedisCfg struct {
 	Addr     string
 	Password string
 	DB       int
 }
 
 type redisCache struct {
-	client *redis.Client
-	cfg    redisCfg
+	Client *redis.Client
+	Cfg    RedisCfg
 }
 
-func newRedisCfg() redisCfg {
+func newRedisCfg() RedisCfg {
 	host := os.Getenv("REDIS_HOST")
 	port := os.Getenv("REDIS_PORT")
 	password := os.Getenv("REDIS_PASSWORD")
 	db, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
 
-	cfg := redisCfg{
+	cfg := RedisCfg{
 		Addr:     host + ":" + port,
 		Password: password,
 		DB:       db,
@@ -39,7 +39,7 @@ func newRedisCfg() redisCfg {
 
 }
 
-func (r *redisCfg) newRedisClient() *redis.Client {
+func (r *RedisCfg) newRedisClient() *redis.Client {
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     r.Addr,
@@ -59,8 +59,8 @@ func NewRedisCache() redisCache {
 	log.Debug("New redis cache returned")
 
 	return redisCache{
-		client: client,
-		cfg:    cfg,
+		Client: client,
+		Cfg:    cfg,
 	}
 
 }
@@ -71,7 +71,7 @@ func (r *redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
 		Ipv4: key,
 	}
 
-	result, err := r.client.JSONGet(ctx, key).Result()
+	result, err := r.Client.JSONGet(ctx, key).Result()
 
 	if err != nil {
 		log.Errorf("Got error from redis getting key %v\n%v", key, err)
@@ -94,7 +94,7 @@ func (r *redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
 func (r *redisCache) Set(ctx context.Context, key string, val string) error {
 	log.Debugf("Adding to redis. key: %v, value: %v", key, val)
 
-	err := r.client.JSONSet(ctx, key, "$", val).Err()
+	err := r.Client.JSONSet(ctx, key, "$", val).Err()
 
 	if err != nil {
 		log.Errorf("Error sending JSON to redis: \nkey: %v\nval: %v\nerr: %v", key, val, err)
