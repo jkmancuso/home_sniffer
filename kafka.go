@@ -24,23 +24,29 @@ type kafkaStore struct {
 	conn *kafka.Conn
 }
 
-func NewKafkaStore(ctx context.Context) kafkaStore {
+func NewKafkaStore(ctx context.Context) (kafkaStore, error) {
 	kafkaCfg := newKafkaCfg(ctx)
+
+	kStore := kafkaStore{
+		cfg: kafkaCfg,
+	}
 
 	conn, err := kafkaCfg.connectKafka(ctx)
 
 	if err != nil {
-		log.Panic(fmt.Sprintf("Err: %v\ncould not connect to kafka with params: %+v", err, kafkaCfg))
+		log.Errorf("Err: %v\ncould not connect to kafka with params: %+v", err, kafkaCfg)
+		return kStore, err
 	}
 
-	kStore := kafkaStore{
-		cfg:  kafkaCfg,
-		conn: conn,
-	}
+	kStore.setConn(conn)
 
 	log.Debugf("Returning kafka store: %+v", kStore)
 
-	return kStore
+	return kStore, nil
+}
+
+func (store *kafkaStore) setConn(conn *kafka.Conn) {
+	store.conn = conn
 }
 
 func newKafkaCfg(_ context.Context) kafkaConfig {

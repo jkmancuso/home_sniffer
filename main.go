@@ -12,7 +12,12 @@ func main() {
 
 	setLogger()
 	params := getCmdLineParams()
-	store := NewStore(ctx, params["outputType"])
+	store, err := NewStore(ctx, params["outputType"])
+
+	if err != nil {
+		log.Fatal("could not connect to output store!", err)
+	}
+
 	cache := NewCache(params["cacheType"])
 	captureCfg := NewPcapCfg(params["device"])
 
