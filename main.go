@@ -13,7 +13,7 @@ func main() {
 	setLogger()
 	params := getCmdLineParams()
 	store := NewStore(ctx, params["outputType"])
-	cache := NewRedisCache()
+	cache := NewCache(params["cacheType"])
 	captureCfg := NewPcapCfg(params["device"])
 
 	if err := captureCfg.startPcap(&store, &cache, ctx); err != nil {

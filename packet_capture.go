@@ -40,7 +40,7 @@ func NewPcapCfg(device string) pcapConfig {
 }
 
 // Start new packet capture
-func (cfg *pcapConfig) startPcap(store *io.Writer, cache Cache, ctx context.Context) error {
+func (cfg *pcapConfig) startPcap(store *io.Writer, cache *Cache, ctx context.Context) error {
 	log.Debugf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.newPcapHandle()
@@ -93,8 +93,8 @@ func (cfg *pcapConfig) startPcap(store *io.Writer, cache Cache, ctx context.Cont
 
 			sizeInt, _ := strconv.Atoi(size)
 
-			src, errSrc := GetIPLookupInfo(srcIP, cache, ctx)
-			dst, errDst := GetIPLookupInfo(dstIP, cache, ctx)
+			src, errSrc := GetIPLookupInfo(srcIP, *cache, ctx)
+			dst, errDst := GetIPLookupInfo(dstIP, *cache, ctx)
 
 			if errSrc != nil || errDst != nil {
 				log.Warnf("Error looking up ip info: %v %v", errSrc, errDst)

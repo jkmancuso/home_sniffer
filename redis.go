@@ -65,7 +65,7 @@ func NewRedisCache() redisCache {
 
 }
 
-func (r *redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
+func (r redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
 
 	resultipInfo := ipInfo{
 		Ipv4: key,
@@ -91,7 +91,7 @@ func (r *redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
 
 }
 
-func (r *redisCache) Set(ctx context.Context, key string, val string) error {
+func (r redisCache) Set(ctx context.Context, key string, val string) error {
 	log.Debugf("Adding to redis. key: %v, value: %v", key, val)
 
 	err := r.Client.JSONSet(ctx, key, "$", val).Err()
