@@ -67,7 +67,7 @@ func newKafkaCfg(_ context.Context) kafkaConfig {
 }
 
 // implement io.writer
-func (store *kafkaStore) Write(data []byte) (int, error) {
+func (store kafkaStore) Write(data []byte) (int, error) {
 	var packets []packetData
 	var kafkaMsgs []kafka.Message
 	var err error

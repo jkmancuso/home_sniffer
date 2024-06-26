@@ -30,8 +30,17 @@ type packetData struct {
 	Length int
 }
 
+func NewPcapCfg(device string) pcapConfig {
+	return pcapConfig{
+		device:  device,
+		snaplen: 1600,
+		promisc: true,
+		timeout: pcap.BlockForever,
+	}
+}
+
 // Start new packet capture
-func (cfg *pcapConfig) startPcap(store io.Writer, cache Cache, ctx context.Context) error {
+func (cfg *pcapConfig) startPcap(store *io.Writer, cache Cache, ctx context.Context) error {
 	log.Debugf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.newPcapHandle()
@@ -59,7 +68,7 @@ func (cfg *pcapConfig) startPcap(store io.Writer, cache Cache, ctx context.Conte
 		select {
 
 		case <-sigCh:
-			json.NewEncoder(store).Encode(packetBatch)
+			json.NewEncoder(*store).Encode(packetBatch)
 			log.Printf("Caught interrupt, finishing remaining processing: %d packets\n", len(packetBatch))
 			return nil
 		default:
@@ -104,7 +113,7 @@ func (cfg *pcapConfig) startPcap(store io.Writer, cache Cache, ctx context.Conte
 			if i%int64(batchSize) == 0 {
 				log.Debug("Writing batch")
 
-				if err := json.NewEncoder(store).Encode(packetBatch); err != nil {
+				if err := json.NewEncoder(*store).Encode(packetBatch); err != nil {
 					log.Errorf("Error writing to kafka: %v", err)
 				}
 

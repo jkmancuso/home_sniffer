@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"regexp"
 
@@ -54,4 +55,16 @@ func setLogger() {
 
 	log.Printf("log level set to: %v", level.String())
 
+}
+
+func getCmdLineParams() map[string]string {
+	params := make(map[string]string)
+
+	params["device"] = *flag.String("device", "wlan0", "")
+	params["outputType"] = *flag.String("output", "kafka", "")
+	params["cacheType"] = *flag.String("cache", "redis", "")
+	flag.Parse()
+
+	log.Debugf("Get flags: %+v", params)
+	return params
 }
