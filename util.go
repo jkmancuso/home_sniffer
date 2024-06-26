@@ -68,7 +68,7 @@ func getCmdLineParams() map[string]string {
 	params := make(map[string]string)
 
 	params["device"] = *flag.String("device", "wlan0", "")
-	params["outputType"] = *flag.String("output", "kafka", "")
+	params["outputType"] = *flag.String("output", "file", "")
 	params["cacheType"] = *flag.String("cache", "redis", "")
 	flag.Parse()
 
