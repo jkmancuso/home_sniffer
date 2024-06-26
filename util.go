@@ -33,8 +33,15 @@ func parseSize(payload string) string {
 
 }
 
-func loadEnv() {
-	godotenv.Load()
+func loadEnv(paths ...string) {
+	if len(paths) == 0 {
+		godotenv.Load()
+	} else {
+		for _, path := range paths {
+			godotenv.Load(path)
+		}
+	}
+
 }
 
 func setLogger() {

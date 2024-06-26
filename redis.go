@@ -10,6 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const redisEnvfile = "./redis.env"
+
 type RedisCfg struct {
 	Addr     string
 	Password string
@@ -22,6 +24,8 @@ type redisCache struct {
 }
 
 func newRedisCfg() RedisCfg {
+	loadEnv(redisEnvfile)
+
 	host := os.Getenv("REDIS_HOST")
 	port := os.Getenv("REDIS_PORT")
 	password := os.Getenv("REDIS_PASSWORD")

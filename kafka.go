@@ -11,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const kafkaEnvfile = "./kafka.env"
+
 type kafkaConfig struct {
 	topic     string
 	partition int
@@ -50,7 +52,7 @@ func (store *kafkaStore) setConn(conn *kafka.Conn) {
 }
 
 func newKafkaCfg(_ context.Context) kafkaConfig {
-	loadEnv()
+	loadEnv(kafkaEnvfile)
 
 	topic := os.Getenv("KAFKA_TOPIC")
 	partition, _ := strconv.Atoi(os.Getenv("KAFKA_PARTITION"))
