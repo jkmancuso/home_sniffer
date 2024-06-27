@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"strconv"
@@ -14,6 +12,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
+	"github.com/jkmancuso/home_sniffer/stores"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -40,7 +39,7 @@ func NewPcapCfg(device string) pcapConfig {
 }
 
 // Start new packet capture
-func (cfg *pcapConfig) startPcap(store *io.Writer, cache *Cache, ctx context.Context) error {
+func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.Context) error {
 	log.Debugf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.newPcapHandle()
@@ -56,9 +55,10 @@ func (cfg *pcapConfig) startPcap(store *io.Writer, cache *Cache, ctx context.Con
 	var netLayer, transportLayer, srcIP, dstIP, size string
 	var i int64
 	var pack packetData
+	var packStr string
+	var packetBatch []string
 
 	batchSize := 100
-	packetBatch := []packetData{}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -68,7 +68,7 @@ func (cfg *pcapConfig) startPcap(store *io.Writer, cache *Cache, ctx context.Con
 		select {
 
 		case <-sigCh:
-			json.NewEncoder(*store).Encode(packetBatch)
+			_ = store.Send(packetBatch)
 			log.Printf("Caught interrupt, finishing remaining processing: %d packets\n", len(packetBatch))
 			return nil
 		default:
@@ -105,15 +105,17 @@ func (cfg *pcapConfig) startPcap(store *io.Writer, cache *Cache, ctx context.Con
 				Dst:    dst,
 				Length: sizeInt,
 			}
+			packStr = fmt.Sprint(pack)
 
-			log.Debugf("Queueing up packet: %v", pack)
+			log.Debugf("Queueing up packet: %v", packStr)
+			os.Exit(0)
 
-			packetBatch = append(packetBatch, pack)
+			packetBatch = append(packetBatch, packStr)
 
 			if i%int64(batchSize) == 0 {
 				log.Debug("Writing batch")
 
-				if err := json.NewEncoder(*store).Encode(packetBatch); err != nil {
+				if err := store.Send(packetBatch); err != nil {
 					log.Errorf("Error writing to kafka: %v", err)
 				}
 

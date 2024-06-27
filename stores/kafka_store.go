@@ -1,8 +1,7 @@
-package main
+package stores
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -10,8 +9,6 @@ import (
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
 )
-
-const kafkaEnvfile = "./kafka.env"
 
 type kafkaConfig struct {
 	topic     string
@@ -52,7 +49,6 @@ func (store *kafkaStore) setConn(conn *kafka.Conn) {
 }
 
 func newKafkaCfg(_ context.Context) kafkaConfig {
-	loadEnv(kafkaEnvfile)
 
 	topic := os.Getenv("KAFKA_TOPIC")
 	partition, _ := strconv.Atoi(os.Getenv("KAFKA_PARTITION"))
@@ -74,40 +70,25 @@ func newKafkaCfg(_ context.Context) kafkaConfig {
 
 }
 
-// implement io.writer
-func (store kafkaStore) Write(data []byte) (int, error) {
-	var packets []packetData
+func (store kafkaStore) Send(data []string) error {
 	var kafkaMsgs []kafka.Message
 	var err error
-	var msgBytes []byte
 	var numBytes int
 
-	if err := json.Unmarshal(data, &packets); err != nil {
-		log.Errorf("Error unmarshalling payload, %v", err)
-		return 0, err
-	}
-
-	for _, payload := range packets {
-		msgBytes, err = json.Marshal(payload)
-
-		if err != nil {
-			log.Errorf("Error marshalling payload, %v", err)
-			return 0, err
-		}
-
-		kafkaMsgs = append(kafkaMsgs, kafka.Message{Value: msgBytes})
+	for _, payload := range data {
+		kafkaMsgs = append(kafkaMsgs, kafka.Message{Value: []byte(payload)})
 	}
 
 	numBytes, err = store.conn.WriteMessages(kafkaMsgs...)
 
 	if err != nil {
 		log.Errorf("Error writing msg to kafka: %v", err)
-		return 0, nil
+		return nil
 	}
 
 	log.Debugf("Successfully wrote %d bytes of kafka msg", numBytes)
 
-	return numBytes, nil
+	return nil
 }
 
 // return a kafka connection handle

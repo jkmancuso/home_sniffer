@@ -21,7 +21,7 @@ func main() {
 	cache := NewCache(params["cacheType"])
 	captureCfg := NewPcapCfg(params["device"])
 
-	if err := captureCfg.startPcap(&store, &cache, ctx); err != nil {
+	if err := captureCfg.startPcap(store, &cache, ctx); err != nil {
 		log.Fatalf("could not start pcap %v", err)
 	}
 

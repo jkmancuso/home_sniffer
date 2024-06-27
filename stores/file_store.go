@@ -1,12 +1,10 @@
-package main
+package stores
 
 import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
 )
-
-const fileEnvfile = "./file.env"
 
 type fileConfig struct {
 	filename string
@@ -43,7 +41,6 @@ func (store *fileStore) setHandle(handle *os.File) {
 }
 
 func newFileCfg() fileConfig {
-	loadEnv(fileEnvfile)
 
 	filepath := os.Getenv("FILEPATH")
 
@@ -57,8 +54,14 @@ func newFileCfg() fileConfig {
 
 }
 
-func (store fileStore) Write(data []byte) (int, error) {
-	n, err := store.handle.Write(data)
+func (store fileStore) Send(data []string) error {
 
-	return n, err
+	var err error
+
+	for _, payload := range data {
+		_, err = store.handle.Write([]byte(payload))
+
+	}
+
+	return err
 }

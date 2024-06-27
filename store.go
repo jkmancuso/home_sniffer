@@ -2,18 +2,24 @@ package main
 
 import (
 	"context"
-	"io"
+
+	"github.com/jkmancuso/home_sniffer/stores"
 )
 
-func NewStore(ctx context.Context, outputType string) (io.Writer, error) {
-	var store io.Writer
+const fileEnvfile = "./file.env"
+const kafkaEnvfile = "./kafka.env"
+
+func NewStore(ctx context.Context, outputType string) (stores.Sender, error) {
+	var store stores.Sender
 	var err error
 
 	switch outputType {
 	case "kafka":
-		store, err = NewKafkaStore(ctx)
+		loadEnv(kafkaEnvfile)
+		store, err = stores.NewKafkaStore(ctx)
 	case "file":
-		store, err = NewFileStore()
+		loadEnv(fileEnvfile)
+		store, err = stores.NewFileStore()
 	}
 
 	return store, err
