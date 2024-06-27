@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -49,13 +50,14 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 	}
 
 	defer handle.Close()
+	defer store.Teardown()
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
 	var netLayer, transportLayer, srcIP, dstIP, size string
 	var i int64
 	var pack packetData
-	var packStr string
+	var packBytes []byte
 	var packetBatch []string
 
 	batchSize := 100
@@ -105,12 +107,16 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 				Dst:    dst,
 				Length: sizeInt,
 			}
-			packStr = fmt.Sprint(pack)
 
-			log.Debugf("Queueing up packet: %v", packStr)
-			os.Exit(0)
+			packBytes, err = json.Marshal(pack)
 
-			packetBatch = append(packetBatch, packStr)
+			if err != nil {
+				log.Errorf("Error marshalling %v\n%v", pack, err)
+			}
+
+			log.Debugf("Queueing up packet: %v", string(packBytes))
+
+			packetBatch = append(packetBatch, string(packBytes))
 
 			if i%int64(batchSize) == 0 {
 				log.Debug("Writing batch")

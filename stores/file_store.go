@@ -36,6 +36,10 @@ func NewFileStore() (fileStore, error) {
 	return fStore, nil
 }
 
+func (store fileStore) Teardown() {
+	log.Printf("Tearing down file store")
+}
+
 func (store *fileStore) setHandle(handle *os.File) {
 	store.handle = handle
 }
@@ -59,7 +63,7 @@ func (store fileStore) Send(data []string) error {
 	var err error
 
 	for _, payload := range data {
-		_, err = store.handle.Write([]byte(payload))
+		_, err = store.handle.Write([]byte(payload + "\n"))
 
 	}
 

@@ -44,6 +44,10 @@ func NewKafkaStore(ctx context.Context) (kafkaStore, error) {
 	return kStore, nil
 }
 
+func (store kafkaStore) Teardown() {
+	log.Printf("Tearing down kafka store")
+}
+
 func (store *kafkaStore) setConn(conn *kafka.Conn) {
 	store.conn = conn
 }

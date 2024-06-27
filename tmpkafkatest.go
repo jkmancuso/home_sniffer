@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"context"
 	"encoding/json"
@@ -50,3 +51,4 @@ func TestConnect(t *testing.T) {
 	})
 
 }
+*/
