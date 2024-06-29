@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -11,9 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/pcap"
+	"github.com/gopacket/gopacket"
+	"github.com/gopacket/gopacket/layers"
 	"github.com/jkmancuso/home_sniffer/stores"
+	pcap "github.com/packetcap/go-pcap"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -33,9 +33,9 @@ type packetData struct {
 func NewPcapCfg(device string) pcapConfig {
 	return pcapConfig{
 		device:  device,
-		snaplen: 1600,
+		snaplen: 1500,
 		promisc: true,
-		timeout: pcap.BlockForever,
+		timeout: 0,
 	}
 }
 
@@ -49,10 +49,12 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 		return err
 	}
 
+	_ = handle.SetBPFFilter("dns")
+
 	defer handle.Close()
 	defer store.Teardown()
 
-	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+	packetSource := gopacket.NewPacketSource(handle, layers.LinkTypeEthernet)
 
 	var netLayer, transportLayer, srcIP, dstIP, size string
 	var i int64
@@ -77,8 +79,10 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 			//experiencing random SEGFAULT when grabbing netflow
 			//https://pkg.go.dev/github.com/google/gopacket#NetworkLayer
 			//so have to parse as string :(
+
 			netLayer = fmt.Sprintf("%+v", packet.NetworkLayer())
-			transportLayer = fmt.Sprintf("%+v", packet.TransportLayer())
+			transportLayer = fmt.Sprintf("%v", packet.ApplicationLayer())
+			log.Debugf("transport %v\n\n", transportLayer)
 
 			srcIP, dstIP = parseIPs(netLayer)
 			size = parseSize(transportLayer)
@@ -146,9 +150,8 @@ func (cfg *pcapConfig) newPcapHandle() (*pcap.Handle, error) {
 	handle, err := pcap.OpenLive(
 		cfg.device,
 		cfg.snaplen,
-		cfg.promisc,
-		cfg.timeout,
-	)
+		true,
+		0, false)
 
 	if err != nil {
 		return nil, err
@@ -161,29 +164,31 @@ func (cfg *pcapConfig) newPcapHandle() (*pcap.Handle, error) {
 // Helper function to check that the selected device (ie br0 or eth0) is valid on your machine
 func (cfg *pcapConfig) validateInterfaces() error {
 	log.Println("Confirming valid devices")
+	/*
+		selectedDevice := cfg.device
 
-	selectedDevice := cfg.device
+		ifs, err := pcap.
 
-	ifs, err := pcap.FindAllDevs()
-
-	if err != nil {
-		return err
-	}
-
-	for _, ethInterface := range ifs {
-		if ethInterface.Name == selectedDevice {
-			log.Printf("Found device %v, checking IP...\n", selectedDevice)
-
-			ips := ethInterface.Addresses
-
-			if len(ips) > 0 {
-				log.Printf("IP: %v", ips)
-				return nil
-			}
-
+		if err != nil {
+			return err
 		}
-	}
 
-	return errors.New("interface is not valid ")
+		for _, ethInterface := range ifs {
+			if ethInterface.Name == selectedDevice {
+				log.Printf("Found device %v, checking IP...\n", selectedDevice)
+
+				ips := ethInterface.Addresses
+
+				if len(ips) > 0 {
+					log.Printf("IP: %v", ips)
+					return nil
+				}
+
+			}
+		}
+
+		return errors.New("interface is not valid ")*/
+
+	return nil
 
 }
