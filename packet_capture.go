@@ -76,9 +76,6 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 			log.Printf("Caught interrupt, finishing remaining processing: %d packets\n", len(packetBatch))
 			return nil
 		default:
-			//experiencing random SEGFAULT when grabbing netflow
-			//https://pkg.go.dev/github.com/google/gopacket#NetworkLayer
-			//so have to parse as string :(
 
 			netLayer = fmt.Sprintf("%+v", packet.NetworkLayer())
 			transportLayer = fmt.Sprintf("%v", packet.ApplicationLayer())
