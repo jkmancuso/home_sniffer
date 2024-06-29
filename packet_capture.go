@@ -77,8 +77,8 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 			return nil
 		default:
 
-			netLayer = fmt.Sprintf("%+v", packet.NetworkLayer())
-			transportLayer = fmt.Sprintf("%v", packet.ApplicationLayer())
+			netLayer = fmt.Sprintf("%+v", packet.NetworkLayer().LayerPayload())
+			transportLayer = fmt.Sprintf("%v", packet.ApplicationLayer().LayerPayload())
 			log.Debugf("transport %v\n\n", transportLayer)
 
 			srcIP, dstIP = parseIPs(netLayer)
