@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+
 	"os"
 	"os/signal"
 	"strconv"
@@ -18,24 +18,36 @@ import (
 )
 
 type pcapConfig struct {
-	device  string
-	snaplen int32
-	promisc bool
-	timeout time.Duration
+	device    string
+	snaplen   int32
+	promisc   bool
+	timeout   time.Duration
+	filter    string
+	batchSize int
 }
 
-type packetData struct {
+type entryData struct {
 	Src    ipInfo
 	Dst    ipInfo
 	Length int
 }
 
-func NewPcapCfg(device string) pcapConfig {
+func NewPcapCfg(params map[string]string) pcapConfig {
+
+	device := params["device"]
+	snaplen, _ := strconv.Atoi(params["snaplen"])
+	timeout, _ := strconv.Atoi(params["timeout"])
+	batchSize, _ := strconv.Atoi(params["batch_size"])
+	promisc, _ := strconv.ParseBool(params["promisc"])
+	filter := params["filter"]
+
 	return pcapConfig{
-		device:  device,
-		snaplen: 1500,
-		promisc: true,
-		timeout: 0,
+		device:    device,
+		snaplen:   int32(snaplen),
+		promisc:   promisc,
+		timeout:   time.Duration(timeout * int(time.Second)),
+		filter:    filter,
+		batchSize: batchSize,
 	}
 }
 
@@ -49,20 +61,30 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 		return err
 	}
 
-	_ = handle.SetBPFFilter("dns")
+	if err = handle.SetBPFFilter(cfg.filter); err != nil {
+		log.Fatalf("Unable to set filter %v", cfg.filter)
+	}
 
 	defer handle.Close()
 	defer store.Teardown()
 
-	packetSource := gopacket.NewPacketSource(handle, layers.LinkTypeEthernet)
+	packetSource := gopacket.NewPacketSource(handle, layers.LayerTypeEthernet)
 
-	var netLayer, transportLayer, srcIP, dstIP, size string
 	var i int64
-	var pack packetData
-	var packBytes []byte
-	var packetBatch []string
+	var entry entryData
+	var srcEntry, dstEntry ipInfo
+	var entryBytes []byte
+	var entryBatch []string
 
-	batchSize := 100
+	var dnsLayer gopacket.Layer
+	var ipLayer gopacket.Layer
+
+	var dnsPacket *layers.DNS
+	var ipPacket *layers.IPv4
+	var src, dst string
+	var size uint16
+
+	batchSize := cfg.batchSize
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -72,61 +94,59 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 		select {
 
 		case <-sigCh:
-			_ = store.Send(packetBatch)
-			log.Printf("Caught interrupt, finishing remaining processing: %d packets\n", len(packetBatch))
+			_ = store.Send(entryBatch)
+			log.Printf("Caught interrupt, finishing remaining processing: %d packets\n", len(entryBatch))
 			return nil
 		default:
 
-			netLayer = fmt.Sprintf("%+v", packet.NetworkLayer().LayerPayload())
-			transportLayer = fmt.Sprintf("%v", packet.ApplicationLayer().LayerPayload())
-			log.Debugf("transport %v\n\n", transportLayer)
+			log.Debugf("Getting packet: %v", packet.String())
 
-			srcIP, dstIP = parseIPs(netLayer)
-			size = parseSize(transportLayer)
+			if dnsLayer = packet.Layer(layers.LayerTypeDNS); dnsLayer != nil {
+				dnsPacket = dnsLayer.(*layers.DNS)
+				for _, answer := range dnsPacket.Answers {
+					log.Infof("DNS: %+v", string(answer.Name))
+				}
+			}
+
+			if ipLayer = packet.Layer(layers.LayerTypeIPv4); ipLayer != nil {
+				ipPacket, _ = ipLayer.(*layers.IPv4)
+				size = ipPacket.Length
+				src = ipPacket.SrcIP.String()
+				dst = ipPacket.DstIP.String()
+				log.Infof("IP: %+v %+v %+v", size, src, dst)
+
+			}
 
 			//some packets have no payload such as ACKs, just move to next iteration
-			if len(size) == 0 || len(srcIP) == 0 || len(dstIP) == 0 {
+			if size == 0 || len(src) == 0 || len(dst) == 0 {
 				//log.Debug("Dropping")
 				continue
 			}
 
-			log.Debugf("src:%v,dst:%v,size:%v\n", srcIP, dstIP, size)
-
 			i += 1
 
-			sizeInt, _ := strconv.Atoi(size)
+			srcEntry, _ = NewIPinfo(src, *cache, ctx)
+			dstEntry, _ = NewIPinfo(dst, *cache, ctx)
+			entry, _ = NewEntryData(srcEntry, dstEntry, size)
 
-			src, errSrc := GetIPLookupInfo(srcIP, *cache, ctx)
-			dst, errDst := GetIPLookupInfo(dstIP, *cache, ctx)
-
-			if errSrc != nil || errDst != nil {
-				log.Warnf("Error looking up ip info: %v %v", errSrc, errDst)
-			}
-
-			pack = packetData{
-				Src:    src,
-				Dst:    dst,
-				Length: sizeInt,
-			}
-
-			packBytes, err = json.Marshal(pack)
+			entryBytes, err = json.Marshal(entry)
 
 			if err != nil {
-				log.Errorf("Error marshalling %v\n%v", pack, err)
+				log.Errorf("Error marshalling %v\n%v", entry, err)
 			}
 
-			log.Debugf("Queueing up packet: %v", string(packBytes))
+			log.Debugf("Queueing up packet: %v", string(entryBytes))
 
-			packetBatch = append(packetBatch, string(packBytes))
+			entryBatch = append(entryBatch, string(entryBytes))
 
 			if i%int64(batchSize) == 0 {
 				log.Debug("Writing batch")
 
-				if err := store.Send(packetBatch); err != nil {
+				if err := store.Send(entryBatch); err != nil {
 					log.Errorf("Error writing to kafka: %v", err)
 				}
 
-				packetBatch = packetBatch[:0]
+				entryBatch = entryBatch[:0]
 			}
 
 		}
@@ -188,4 +208,13 @@ func (cfg *pcapConfig) validateInterfaces() error {
 
 	return nil
 
+}
+
+func NewEntryData(src ipInfo, dest ipInfo, size uint16) (entryData, error) {
+
+	return entryData{
+		Src:    src,
+		Dst:    dest,
+		Length: int(size),
+	}, nil
 }

@@ -82,6 +82,10 @@ func (r redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
 		return resultipInfo, false
 	}
 
+	if len(result) == 0 {
+		return resultipInfo, false
+	}
+
 	err = json.Unmarshal([]byte(result), &resultipInfo)
 
 	if err != nil {

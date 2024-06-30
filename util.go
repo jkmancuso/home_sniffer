@@ -3,35 +3,10 @@ package main
 import (
 	"flag"
 	"os"
-	"regexp"
 
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
-
-func parseIPs(payload string) (string, string) {
-	r, _ := regexp.Compile(`SrcIP:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*DstIP:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})`)
-	matches := r.FindStringSubmatch(payload)
-
-	if len(matches) != 3 {
-		return "", ""
-	}
-
-	return matches[1], matches[2]
-
-}
-
-func parseSize(payload string) string {
-	r, _ := regexp.Compile(` Length:(\d+)`)
-	matches := r.FindStringSubmatch(payload)
-
-	if len(matches) != 2 {
-		return ""
-	}
-
-	return matches[1]
-
-}
 
 func loadEnv(paths ...string) {
 	if len(paths) == 0 {
@@ -47,7 +22,7 @@ func loadEnv(paths ...string) {
 func setLogger() {
 	loadEnv()
 
-	level, err := log.ParseLevel(os.Getenv("LOGLEVEL"))
+	level, err := log.ParseLevel(os.Getenv("LOG_LEVEL"))
 
 	if err != nil {
 		log.Panic("Unable to recoghnize logging")
@@ -68,6 +43,11 @@ func getCmdLineParams() map[string]string {
 	params := make(map[string]string)
 
 	params["device"] = *flag.String("device", "wlan0", "")
+	params["promisc"] = *flag.String("promisc", "true", "")
+	params["snaplen"] = *flag.String("snaplen", "1500", "")
+	params["timeout"] = *flag.String("timeout", "0", "")
+	params["filter"] = *flag.String("filter", "port 53 or port 443", "")
+	params["batch_size"] = *flag.String("batch_size", "100", "")
 	params["outputType"] = *flag.String("output", "file", "")
 	params["cacheType"] = *flag.String("cache", "redis", "")
 	flag.Parse()
