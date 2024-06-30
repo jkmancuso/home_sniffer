@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net"
 
 	"os"
 	"os/signal"
@@ -52,8 +53,8 @@ func NewPcapCfg(params map[string]string) pcapConfig {
 }
 
 // Start new packet capture
-func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.Context) error {
-	log.Debugf("Starting packet cap on device %v\n", cfg.device)
+func (cfg *pcapConfig) startPcap(store stores.Sender, cache Cache, ctx context.Context) error {
+	log.Printf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.newPcapHandle()
 
@@ -79,10 +80,17 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 	var dnsLayer gopacket.Layer
 	var ipLayer gopacket.Layer
 
+	var question layers.DNSQuestion
+	var answer layers.DNSResourceRecord
+
 	var dnsPacket *layers.DNS
 	var ipPacket *layers.IPv4
 	var src, dst string
 	var size uint16
+
+	var parsedIP net.IP
+
+	var DNSname, resolvedIPAddress string
 
 	batchSize := cfg.batchSize
 
@@ -99,13 +107,30 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 			return nil
 		default:
 
-			log.Debugf("Getting packet: %v", packet.String())
-
 			if dnsLayer = packet.Layer(layers.LayerTypeDNS); dnsLayer != nil {
 				dnsPacket = dnsLayer.(*layers.DNS)
-				for _, answer := range dnsPacket.Answers {
-					log.Infof("DNS: %+v", string(answer.Name))
+
+				for _, question = range dnsPacket.Questions {
+					DNSname = string(question.Name)
+					log.Infof("DNS Q: %v", DNSname)
 				}
+
+				for _, answer = range dnsPacket.Answers {
+					resolvedIPAddress = string(answer.String())
+
+					// if it returns anything other than an IP, like a CNAME
+					if parsedIP = net.ParseIP(resolvedIPAddress); parsedIP == nil {
+						continue
+					}
+
+					log.Infof("DNS A: %+v", resolvedIPAddress)
+
+					if err = cache.Set(ctx, resolvedIPAddress, DNSname); err != nil {
+						log.Errorf("Error setting cache key %v %v", resolvedIPAddress, err)
+					}
+				}
+
+				continue
 			}
 
 			if ipLayer = packet.Layer(layers.LayerTypeIPv4); ipLayer != nil {
@@ -113,29 +138,26 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache *Cache, ctx context.
 				size = ipPacket.Length
 				src = ipPacket.SrcIP.String()
 				dst = ipPacket.DstIP.String()
-				log.Infof("IP: %+v %+v %+v", size, src, dst)
-
 			}
 
 			//some packets have no payload such as ACKs, just move to next iteration
 			if size == 0 || len(src) == 0 || len(dst) == 0 {
-				//log.Debug("Dropping")
 				continue
 			}
 
 			i += 1
 
-			srcEntry, _ = NewIPinfo(src, *cache, ctx)
-			dstEntry, _ = NewIPinfo(dst, *cache, ctx)
+			srcEntry, _ = NewIPinfo(src, cache, ctx)
+			dstEntry, _ = NewIPinfo(dst, cache, ctx)
 			entry, _ = NewEntryData(srcEntry, dstEntry, size)
+
+			log.Infof("IP: src %v (%v) dest %v (%v)", src, srcEntry.DNS, dst, dstEntry.DNS)
 
 			entryBytes, err = json.Marshal(entry)
 
 			if err != nil {
 				log.Errorf("Error marshalling %v\n%v", entry, err)
 			}
-
-			log.Debugf("Queueing up packet: %v", string(entryBytes))
 
 			entryBatch = append(entryBatch, string(entryBytes))
 

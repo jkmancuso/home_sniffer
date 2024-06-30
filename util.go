@@ -22,15 +22,14 @@ func loadEnv(paths ...string) {
 func setLogger() {
 	loadEnv()
 
-	level, err := log.ParseLevel(os.Getenv("LOG_LEVEL"))
+	level, err := log.ParseLevel(os.Getenv("LEVEL"))
 
 	if err != nil {
-		log.Panic("Unable to recoghnize logging")
+		log.Panic("Unable to recognize logging")
 	}
 
 	log.SetLevel(level)
 	log.SetFormatter(&log.TextFormatter{
-		DisableColors: true,
 		FullTimestamp: true,
 	})
 	//log.SetReportCaller(true)
@@ -45,7 +44,7 @@ func getCmdLineParams() map[string]string {
 	params["device"] = *flag.String("device", "wlan0", "")
 	params["promisc"] = *flag.String("promisc", "true", "")
 	params["snaplen"] = *flag.String("snaplen", "1500", "")
-	params["timeout"] = *flag.String("timeout", "0", "")
+	params["timeout"] = *flag.String("timeout", "1", "")
 	params["filter"] = *flag.String("filter", "port 53 or port 443", "")
 	params["batch_size"] = *flag.String("batch_size", "100", "")
 	params["outputType"] = *flag.String("output", "file", "")

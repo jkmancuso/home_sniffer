@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"strconv"
 
@@ -69,43 +68,28 @@ func NewRedisCache() redisCache {
 
 }
 
-func (r redisCache) Get(ctx context.Context, key string) (ipInfo, bool) {
+func (r redisCache) Get(ctx context.Context, key string) (string, bool) {
 
-	resultipInfo := ipInfo{
-		Ipv4: key,
-	}
-
-	result, err := r.Client.JSONGet(ctx, key).Result()
+	result, err := r.Client.Get(ctx, key).Result()
 
 	if err != nil {
-		log.Errorf("Got error from redis getting key %v\n%v", key, err)
-		return resultipInfo, false
+		log.Errorf("Empty result from redis for key %v\n%v", key, err)
+		return "", false
 	}
 
-	if len(result) == 0 {
-		return resultipInfo, false
-	}
+	log.Debugf("Successfully pulled cache entry %v from redis", result)
 
-	err = json.Unmarshal([]byte(result), &resultipInfo)
-
-	if err != nil {
-		log.Errorf("Cannot unmarshall string from redis: %v\n%v", key, err)
-		return resultipInfo, false
-	}
-
-	log.Debugf("Successfully pulled cache entry %v from redis", resultipInfo)
-
-	return resultipInfo, true
+	return result, true
 
 }
 
 func (r redisCache) Set(ctx context.Context, key string, val string) error {
-	log.Debugf("Adding to redis. key: %v, value: %v", key, val)
+	log.Infof("Adding to redis. key: %v, value: %v", key, val)
 
-	err := r.Client.JSONSet(ctx, key, "$", val).Err()
+	err := r.Client.Set(ctx, key, val, 0).Err()
 
 	if err != nil {
-		log.Errorf("Error sending JSON to redis: \nkey: %v\nval: %v\nerr: %v", key, val, err)
+		log.Errorf("Error sending to redis: \nkey: %v\nval: %v\nerr: %v", key, val, err)
 		return err
 	} else {
 		return nil
