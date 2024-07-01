@@ -13,9 +13,11 @@ import (
 
 	"github.com/gopacket/gopacket"
 	"github.com/gopacket/gopacket/layers"
-	"github.com/jkmancuso/home_sniffer/stores"
+
 	pcap "github.com/packetcap/go-pcap"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/jkmancuso/home_sniffer/stores"
 )
 
 type pcapConfig struct {
@@ -25,6 +27,7 @@ type pcapConfig struct {
 	timeout   time.Duration
 	filter    string
 	batchSize int
+	syscalls  bool
 }
 
 type entryData struct {
@@ -40,6 +43,8 @@ func NewPcapCfg(params map[string]string) pcapConfig {
 	timeout, _ := strconv.Atoi(params["timeout"])
 	batchSize, _ := strconv.Atoi(params["batch_size"])
 	promisc, _ := strconv.ParseBool(params["promisc"])
+	syscalls, _ := strconv.ParseBool(params["syscalls"])
+
 	filter := params["filter"]
 
 	return pcapConfig{
@@ -49,6 +54,7 @@ func NewPcapCfg(params map[string]string) pcapConfig {
 		timeout:   time.Duration(timeout * int(time.Second)),
 		filter:    filter,
 		batchSize: batchSize,
+		syscalls:  syscalls,
 	}
 }
 
@@ -56,14 +62,16 @@ func NewPcapCfg(params map[string]string) pcapConfig {
 func (cfg *pcapConfig) startPcap(store stores.Sender, cache Cache, ctx context.Context) error {
 	log.Printf("Starting packet cap on device %v\n", cfg.device)
 
-	handle, err := cfg.newPcapHandle()
+	handle, err := cfg.NewPcapHandle()
 
 	if err != nil {
+		log.Errorf("Unable to get handle to packet capture %v", err)
 		return err
 	}
 
 	if err = handle.SetBPFFilter(cfg.filter); err != nil {
-		log.Fatalf("Unable to set filter %v", cfg.filter)
+		log.Errorf("Unable to set filter %v", cfg.filter)
+		return err
 	}
 
 	defer handle.Close()
@@ -131,6 +139,7 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache Cache, ctx context.C
 				}
 
 				continue
+				//if you get DNS packet no need to process the rest of the ip layer
 			}
 
 			if ipLayer = packet.Layer(layers.LayerTypeIPv4); ipLayer != nil {
@@ -180,55 +189,20 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache Cache, ctx context.C
 }
 
 // Generate a new pcap handle given a config
-func (cfg *pcapConfig) newPcapHandle() (*pcap.Handle, error) {
-
-	if err := cfg.validateInterfaces(); err != nil {
-		return nil, err
-	}
+func (cfg *pcapConfig) NewPcapHandle() (*pcap.Handle, error) {
 
 	handle, err := pcap.OpenLive(
 		cfg.device,
 		cfg.snaplen,
-		true,
-		0, false)
+		cfg.promisc,
+		cfg.timeout,
+		cfg.syscalls)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return handle, err
-
-}
-
-// Helper function to check that the selected device (ie br0 or eth0) is valid on your machine
-func (cfg *pcapConfig) validateInterfaces() error {
-	log.Println("Confirming valid devices")
-	/*
-		selectedDevice := cfg.device
-
-		ifs, err := pcap.
-
-		if err != nil {
-			return err
-		}
-
-		for _, ethInterface := range ifs {
-			if ethInterface.Name == selectedDevice {
-				log.Printf("Found device %v, checking IP...\n", selectedDevice)
-
-				ips := ethInterface.Addresses
-
-				if len(ips) > 0 {
-					log.Printf("IP: %v", ips)
-					return nil
-				}
-
-			}
-		}
-
-		return errors.New("interface is not valid ")*/
-
-	return nil
 
 }
 

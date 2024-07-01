@@ -36,7 +36,7 @@ func newRedisCfg() RedisCfg {
 		DB:       db,
 	}
 
-	log.Debugf("Using redis cache: %+v", cfg)
+	log.Infof("Using redis cache: %+v", cfg)
 
 	return cfg
 
@@ -50,7 +50,7 @@ func (r *RedisCfg) newRedisClient() *redis.Client {
 		DB:       r.DB,
 	})
 
-	log.Debug("New redis client created")
+	log.Infof("New redis client created")
 
 	return rdb
 }
@@ -59,7 +59,7 @@ func NewRedisCache() redisCache {
 	cfg := newRedisCfg()
 	client := cfg.newRedisClient()
 
-	log.Debug("New redis cache returned")
+	log.Info("New redis cache returned")
 
 	return redisCache{
 		Client: client,
