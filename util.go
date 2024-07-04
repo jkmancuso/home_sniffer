@@ -47,7 +47,7 @@ func getCmdLineParams() map[string]string {
 	params["timeout"] = *flag.String("timeout", "1", "")
 	params["filter"] = *flag.String("filter", "port 53 or port 443", "")
 	params["batch_size"] = *flag.String("batch_size", "100", "")
-	params["outputType"] = *flag.String("output", "file", "")
+	params["outputType"] = *flag.String("output", "kafka", "")
 	params["cacheType"] = *flag.String("cache", "redis", "")
 	flag.Parse()
 

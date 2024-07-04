@@ -2,6 +2,8 @@ package stores
 
 import (
 	"context"
+	"crypto/tls"
+
 	"fmt"
 	"os"
 	"strconv"
@@ -16,6 +18,7 @@ type kafkaConfig struct {
 	transport string
 	host      string
 	port      int
+	tlsConfig *tls.Config
 }
 
 type kafkaStore struct {
@@ -23,8 +26,13 @@ type kafkaStore struct {
 	conn *kafka.Conn
 }
 
-func NewKafkaStore(ctx context.Context) (kafkaStore, error) {
+func NewKafkaStore(ctx context.Context, tlsConfigs ...*tls.Config) (kafkaStore, error) {
 	kafkaCfg := newKafkaCfg(ctx)
+
+	if len(tlsConfigs) != 0 {
+		log.Info("tls enabled")
+		kafkaCfg.tlsConfig = tlsConfigs[0]
+	}
 
 	kStore := kafkaStore{
 		cfg: kafkaCfg,
@@ -99,7 +107,14 @@ func (store kafkaStore) Send(data []string) error {
 func (cfg *kafkaConfig) connectKafka(ctx context.Context) (*kafka.Conn, error) {
 
 	log.Debugf("Connecting to kafka\n%+v", cfg)
-	conn, err := kafka.DialLeader(ctx,
+
+	dialer := &kafka.Dialer{
+		Timeout:   0,
+		DualStack: true,
+		TLS:       cfg.tlsConfig,
+	}
+
+	conn, err := dialer.DialLeader(ctx,
 		cfg.transport,
 		fmt.Sprintf("%s:%d", cfg.host, cfg.port),
 		cfg.topic,
