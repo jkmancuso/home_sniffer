@@ -31,7 +31,7 @@ func NewKafkaStore(ctx context.Context, tlsConfigs ...*tls.Config) (kafkaStore, 
 
 	if len(tlsConfigs) != 0 {
 		log.Info("tls enabled")
-		kafkaCfg.tlsConfig = tlsConfigs[0]
+		kafkaCfg.setTLS(tlsConfigs[0])
 	}
 
 	kStore := kafkaStore{
@@ -101,6 +101,10 @@ func (store kafkaStore) Send(data []string) error {
 	log.Debugf("Successfully wrote %d bytes of kafka msg", numBytes)
 
 	return nil
+}
+
+func (cfg *kafkaConfig) setTLS(tlsCfg *tls.Config) {
+	cfg.tlsConfig = tlsCfg
 }
 
 // return a kafka connection handle
