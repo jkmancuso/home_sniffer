@@ -30,7 +30,6 @@ func NewKafkaStore(ctx context.Context, tlsConfigs ...*tls.Config) (kafkaStore, 
 	kafkaCfg := newKafkaCfg(ctx)
 
 	if len(tlsConfigs) != 0 {
-		log.Info("tls enabled")
 		kafkaCfg.setTLS(tlsConfigs[0])
 	}
 
@@ -104,6 +103,7 @@ func (store kafkaStore) Send(data []string) error {
 }
 
 func (cfg *kafkaConfig) setTLS(tlsCfg *tls.Config) {
+	log.Info("Setting tls config")
 	cfg.tlsConfig = tlsCfg
 }
 
@@ -115,7 +115,10 @@ func (cfg *kafkaConfig) connectKafka(ctx context.Context) (*kafka.Conn, error) {
 	dialer := &kafka.Dialer{
 		Timeout:   0,
 		DualStack: true,
-		TLS:       cfg.tlsConfig,
+	}
+
+	if cfg.tlsConfig != nil {
+		dialer.TLS = cfg.tlsConfig
 	}
 
 	conn, err := dialer.DialLeader(ctx,
