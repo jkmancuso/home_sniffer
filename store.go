@@ -20,7 +20,10 @@ func NewStore(ctx context.Context, outputType string) (stores.Sender, error) {
 	case "kafka":
 		loadEnv(kafkaEnvfile)
 
-		if os.Getenv("KAFKA_CLIENT_CERT") == "TRUE" {
+		if os.Getenv("KAFKA_TLS_ENABLED") == "TRUE" {
+
+			log.Printf("Kafka is TLS enabled")
+
 			tlsConfig, err := NewTLSConfig(
 				os.Getenv("KAFKA_CLIENT_CERT"),
 				os.Getenv("KAFKA_CLIENT_KEY"),
@@ -37,6 +40,8 @@ func NewStore(ctx context.Context, outputType string) (stores.Sender, error) {
 			}
 
 		} else {
+			log.Printf("Kafka is plaintext")
+
 			store, err = stores.NewKafkaStore(ctx)
 
 			if err != nil {
