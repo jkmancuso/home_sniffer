@@ -7,7 +7,8 @@ import (
 )
 
 type metrics struct {
-	cache *prometheus.GaugeVec
+	cache   *prometheus.GaugeVec
+	traffic *prometheus.GaugeVec
 }
 
 type gaugeVec struct {
@@ -24,8 +25,14 @@ func NewMetrics() *metrics {
 		labels: []string{"hit"},
 	}
 
+	trafficGaugeVec := gaugeVec{
+		opts:   prometheus.GaugeOpts{Name: "traffic"},
+		labels: []string{"src", "dst"},
+	}
+
 	m := &metrics{
-		cache: promauto.NewGaugeVec(cacheGaugeVec.opts, cacheGaugeVec.labels),
+		cache:   promauto.NewGaugeVec(cacheGaugeVec.opts, cacheGaugeVec.labels),
+		traffic: promauto.NewGaugeVec(trafficGaugeVec.opts, trafficGaugeVec.labels),
 	}
 
 	return m

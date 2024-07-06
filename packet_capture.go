@@ -15,6 +15,7 @@ import (
 	"github.com/gopacket/gopacket/layers"
 
 	pcap "github.com/packetcap/go-pcap"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jkmancuso/home_sniffer/stores"
@@ -162,6 +163,7 @@ func (cfg *pcapConfig) startPcap(ctx context.Context, store stores.Sender, cache
 
 			srcEntry.updateCacheMetrics(m)
 			dstEntry.updateCacheMetrics(m)
+			entry.updateTrafficMetrics(m)
 
 			log.Infof("IP: src %v (%v) dest %v (%v)", src, srcEntry.DNS, dst, dstEntry.DNS)
 
@@ -216,4 +218,22 @@ func NewEntryData(src ipInfo, dest ipInfo, size uint16) (entryData, error) {
 		Dst:    dest,
 		Length: int(size),
 	}, nil
+}
+
+func (data *entryData) updateTrafficMetrics(m *metrics) {
+
+	srcEndpoint := data.Src.Ipv4
+	dstEndpoint := data.Dst.Ipv4
+
+	if len(data.Src.DNS) != 0 {
+		srcEndpoint = data.Src.DNS
+	}
+	if len(data.Dst.DNS) != 0 {
+		dstEndpoint = data.Dst.DNS
+	}
+
+	m.traffic.With(prometheus.Labels{
+		"src": srcEndpoint,
+		"dst": dstEndpoint}).Add(float64(data.Length))
+
 }
