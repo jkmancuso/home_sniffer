@@ -59,7 +59,7 @@ func NewPcapCfg(params map[string]string) pcapConfig {
 }
 
 // Start new packet capture
-func (cfg *pcapConfig) startPcap(store stores.Sender, cache Cache, ctx context.Context) error {
+func (cfg *pcapConfig) startPcap(ctx context.Context, store stores.Sender, cache Cache, m *metrics) error {
 	log.Printf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.NewPcapHandle()
@@ -156,9 +156,12 @@ func (cfg *pcapConfig) startPcap(store stores.Sender, cache Cache, ctx context.C
 
 			i += 1
 
-			srcEntry, _ = NewIPinfo(src, cache, ctx)
-			dstEntry, _ = NewIPinfo(dst, cache, ctx)
+			srcEntry, _ = NewIPinfo(ctx, src, cache)
+			dstEntry, _ = NewIPinfo(ctx, dst, cache)
 			entry, _ = NewEntryData(srcEntry, dstEntry, size)
+
+			srcEntry.updateCacheMetrics(m)
+			dstEntry.updateCacheMetrics(m)
 
 			log.Infof("IP: src %v (%v) dest %v (%v)", src, srcEntry.DNS, dst, dstEntry.DNS)
 

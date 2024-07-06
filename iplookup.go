@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,7 +30,7 @@ func (info *ipInfo) String() string {
 }
 
 // main function to pack all the lookup info
-func GetIPLookupInfo(ipAddress string, cache Cache, ctx context.Context) (ipInfo, error) {
+func GetIPLookupInfo(ctx context.Context, ipAddress string, cache Cache) (ipInfo, error) {
 
 	info := ipInfo{
 		Ipv4: ipAddress,
@@ -61,14 +62,14 @@ func GetIPLookupInfo(ipAddress string, cache Cache, ctx context.Context) (ipInfo
 	return info, nil
 }
 
-func NewIPinfo(ipAddress string, cache Cache, ctx context.Context) (ipInfo, error) {
+func NewIPinfo(ctx context.Context, ipAddress string, cache Cache) (ipInfo, error) {
 
 	if result := net.ParseIP(ipAddress); result == nil {
 		log.Errorf("%v is not a valid ip", ipAddress)
 		return ipInfo{}, errors.New("invalid ip")
 	}
 
-	resultInfo, _ := GetIPLookupInfo(ipAddress, cache, ctx)
+	resultInfo, _ := GetIPLookupInfo(ctx, ipAddress, cache)
 
 	log.Debugf("Created new ipinfo struct %v", resultInfo)
 
@@ -86,4 +87,14 @@ func (info *ipInfo) isLocalLAN() bool {
 
 	return false
 
+}
+
+func (info *ipInfo) updateCacheMetrics(m *metrics) {
+	if !info.isLocalLAN() {
+		if len(info.DNS) != 0 {
+			m.cache.With(prometheus.Labels{"hit": "yes"}).Inc()
+		} else {
+			m.cache.With(prometheus.Labels{"hit": "no"}).Inc()
+		}
+	}
 }
