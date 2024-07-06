@@ -17,6 +17,10 @@ func loadEnv(paths ...string) {
 		}
 	}
 
+	if _, isCI := os.LookupEnv("GITHUB_ACTIONS"); isCI {
+		os.Setenv("KAFKA_TLS_ENABLED", "FALSE")
+	}
+
 }
 
 func setLogger() {
