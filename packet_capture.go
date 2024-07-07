@@ -86,20 +86,8 @@ func (cfg *pcapConfig) startPcap(ctx context.Context, store stores.Sender, cache
 	var entryBytes []byte
 	var entryBatch []string
 
-	var dnsLayer gopacket.Layer
-	var ipLayer gopacket.Layer
-
-	var question layers.DNSQuestion
-	var answer layers.DNSResourceRecord
-
-	var dnsPacket *layers.DNS
-	var ipPacket *layers.IPv4
 	var src, dst string
 	var size uint16
-
-	var parsedIP net.IP
-
-	var DNSname, resolvedIPAddress string
 
 	batchSize := cfg.batchSize
 
@@ -111,44 +99,16 @@ func (cfg *pcapConfig) startPcap(ctx context.Context, store stores.Sender, cache
 		select {
 
 		case <-sigCh:
-			_ = store.Send(entryBatch)
 			log.Printf("Caught interrupt, finishing remaining processing: %d packets\n", len(entryBatch))
+			_ = store.Send(entryBatch)
 			return nil
 		default:
 
-			if dnsLayer = packet.Layer(layers.LayerTypeDNS); dnsLayer != nil {
-				dnsPacket = dnsLayer.(*layers.DNS)
-
-				for _, question = range dnsPacket.Questions {
-					DNSname = string(question.Name)
-					log.Infof("DNS Q: %v", DNSname)
-				}
-
-				for _, answer = range dnsPacket.Answers {
-					resolvedIPAddress = string(answer.String())
-
-					// if it returns anything other than an IP, like a CNAME
-					if parsedIP = net.ParseIP(resolvedIPAddress); parsedIP == nil {
-						continue
-					}
-
-					log.Infof("DNS A: %+v", resolvedIPAddress)
-
-					if err = cache.Set(ctx, resolvedIPAddress, DNSname); err != nil {
-						log.Errorf("Error setting cache key %v %v", resolvedIPAddress, err)
-					}
-				}
-
+			if handleDNSLayer(ctx, packet, cache) {
 				continue
-				//if you get DNS packet no need to process the rest of the ip layer
 			}
 
-			if ipLayer = packet.Layer(layers.LayerTypeIPv4); ipLayer != nil {
-				ipPacket, _ = ipLayer.(*layers.IPv4)
-				size = ipPacket.Length
-				src = ipPacket.SrcIP.String()
-				dst = ipPacket.DstIP.String()
-			}
+			size, src, dst = handleIPLayer(packet)
 
 			//some packets have no payload such as ACKs, just move to next iteration
 			if size == 0 || len(src) == 0 || len(dst) == 0 {
@@ -191,6 +151,53 @@ func (cfg *pcapConfig) startPcap(ctx context.Context, store stores.Sender, cache
 
 	return nil
 
+}
+
+func handleDNSLayer(ctx context.Context, p gopacket.Packet, c Cache) bool {
+	if dnsLayer := p.Layer(layers.LayerTypeDNS); dnsLayer != nil {
+		dnsPacket := dnsLayer.(*layers.DNS)
+
+		var question layers.DNSQuestion
+		var answer layers.DNSResourceRecord
+
+		var DNSname, resolvedIPAddress string
+		var parsedIP net.IP
+
+		for _, question = range dnsPacket.Questions {
+			DNSname = string(question.Name)
+			log.Infof("DNS Q: %v", DNSname)
+		}
+
+		for _, answer = range dnsPacket.Answers {
+			resolvedIPAddress = string(answer.String())
+
+			// if it returns anything other than an IP, like a CNAME
+			if parsedIP = net.ParseIP(resolvedIPAddress); parsedIP == nil {
+				continue
+			}
+
+			log.Infof("DNS A: %+v", resolvedIPAddress)
+
+			if err := c.Set(ctx, resolvedIPAddress, DNSname); err != nil {
+				log.Errorf("Error setting cache key %v %v", resolvedIPAddress, err)
+			}
+		}
+
+		return true
+	}
+	return false
+}
+
+func handleIPLayer(p gopacket.Packet) (uint16, string, string) {
+	var ipLayer gopacket.Layer
+	var ipPacket *layers.IPv4
+
+	if ipLayer = p.Layer(layers.LayerTypeIPv4); ipLayer != nil {
+		ipPacket, _ = ipLayer.(*layers.IPv4)
+		return ipPacket.Length, ipPacket.SrcIP.String(), ipPacket.DstIP.String()
+	}
+
+	return 0, "", ""
 }
 
 // Generate a new pcap handle given a config
