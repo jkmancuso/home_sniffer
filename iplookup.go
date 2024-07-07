@@ -62,7 +62,7 @@ func GetIPLookupInfo(ctx context.Context, ipAddress string, cache Cache) (ipInfo
 	return info, nil
 }
 
-func NewIPinfo(ctx context.Context, ipAddress string, cache Cache) (ipInfo, error) {
+func NewIPinfo(ctx context.Context, ipAddress string, cache Cache, m *metrics) (ipInfo, error) {
 
 	if result := net.ParseIP(ipAddress); result == nil {
 		log.Errorf("%v is not a valid ip", ipAddress)
@@ -70,6 +70,8 @@ func NewIPinfo(ctx context.Context, ipAddress string, cache Cache) (ipInfo, erro
 	}
 
 	resultInfo, _ := GetIPLookupInfo(ctx, ipAddress, cache)
+
+	resultInfo.updateCacheMetrics(m)
 
 	log.Debugf("Created new ipinfo struct %v", resultInfo)
 

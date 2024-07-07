@@ -117,13 +117,9 @@ func (cfg *pcapConfig) startPcap(ctx context.Context, store stores.Sender, cache
 
 			i += 1
 
-			srcEntry, _ = NewIPinfo(ctx, src, cache)
-			dstEntry, _ = NewIPinfo(ctx, dst, cache)
-			entry, _ = NewEntryData(srcEntry, dstEntry, size)
-
-			srcEntry.updateCacheMetrics(m)
-			dstEntry.updateCacheMetrics(m)
-			entry.updateTrafficMetrics(m)
+			srcEntry, _ = NewIPinfo(ctx, src, cache, m)
+			dstEntry, _ = NewIPinfo(ctx, dst, cache, m)
+			entry, _ = NewEntryData(srcEntry, dstEntry, size, m)
 
 			log.Infof("IP: src %v (%v) dest %v (%v)", src, srcEntry.DNS, dst, dstEntry.DNS)
 
@@ -218,13 +214,17 @@ func (cfg *pcapConfig) NewPcapHandle() (*pcap.Handle, error) {
 
 }
 
-func NewEntryData(src ipInfo, dest ipInfo, size uint16) (entryData, error) {
+func NewEntryData(src ipInfo, dest ipInfo, size uint16, m *metrics) (entryData, error) {
 
-	return entryData{
+	entry := entryData{
 		Src:    src,
 		Dst:    dest,
 		Length: int(size),
-	}, nil
+	}
+
+	entry.updateTrafficMetrics(m)
+
+	return entry, nil
 }
 
 func (data *entryData) updateTrafficMetrics(m *metrics) {
