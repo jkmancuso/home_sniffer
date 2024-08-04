@@ -15,7 +15,7 @@ import (
 	"github.com/gopacket/gopacket/layers"
 
 	pcap "github.com/packetcap/go-pcap"
-	"github.com/prometheus/client_golang/prometheus"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jkmancuso/home_sniffer/stores"
@@ -60,7 +60,7 @@ func NewPcapCfg(params map[string]string) pcapConfig {
 }
 
 // Start new packet capture
-func (cfg *pcapConfig) startPcap(ctx context.Context, store stores.Sender, cache Cache, m *metrics) error {
+func (cfg *pcapConfig) startPcap(ctx context.Context, store stores.Sender, cache Cache) error {
 	log.Printf("Starting packet cap on device %v\n", cfg.device)
 
 	handle, err := cfg.NewPcapHandle()
@@ -117,9 +117,9 @@ func (cfg *pcapConfig) startPcap(ctx context.Context, store stores.Sender, cache
 
 			i += 1
 
-			srcEntry, _ = NewIPinfo(ctx, src, cache, m)
-			dstEntry, _ = NewIPinfo(ctx, dst, cache, m)
-			entry, _ = NewEntryData(srcEntry, dstEntry, size, m)
+			srcEntry, _ = NewIPinfo(ctx, src, cache)
+			dstEntry, _ = NewIPinfo(ctx, dst, cache)
+			entry, _ = NewEntryData(srcEntry, dstEntry, size)
 
 			log.Infof("IP: src %v (%v) dest %v (%v)", src, srcEntry.DNS, dst, dstEntry.DNS)
 
@@ -214,7 +214,7 @@ func (cfg *pcapConfig) NewPcapHandle() (*pcap.Handle, error) {
 
 }
 
-func NewEntryData(src ipInfo, dest ipInfo, size uint16, m *metrics) (entryData, error) {
+func NewEntryData(src ipInfo, dest ipInfo, size uint16) (entryData, error) {
 
 	entry := entryData{
 		Src:    src,
@@ -222,25 +222,5 @@ func NewEntryData(src ipInfo, dest ipInfo, size uint16, m *metrics) (entryData, 
 		Length: int(size),
 	}
 
-	entry.updateTrafficMetrics(m)
-
 	return entry, nil
-}
-
-func (data *entryData) updateTrafficMetrics(m *metrics) {
-
-	srcEndpoint := data.Src.Ipv4
-	dstEndpoint := data.Dst.Ipv4
-
-	if len(data.Src.DNS) != 0 {
-		srcEndpoint = data.Src.DNS
-	}
-	if len(data.Dst.DNS) != 0 {
-		dstEndpoint = data.Dst.DNS
-	}
-
-	m.traffic.With(prometheus.Labels{
-		"src": srcEndpoint,
-		"dst": dstEndpoint}).Add(float64(data.Length))
-
 }
