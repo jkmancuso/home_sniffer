@@ -1,0 +1,3 @@
+bundle/
+kafka_jks/
+.env.kafka
