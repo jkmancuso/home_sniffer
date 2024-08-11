@@ -1,3 +1,4 @@
 bundle/
 kafka_jks/
 .env.kafka
+mocks/mock_result.go

@@ -2,12 +2,25 @@ package main
 
 /*
 import (
-	"context"
-	"encoding/json"
-	"log"
 	"testing"
+
+	"github.com/jkmancuso/home_sniffer/mocks"
+	"go.uber.org/mock/gomock"
 )
 
+
+func TestRedisSetGet(t *testing.T) {
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	mockResult := mocks.NewMockCacheResult(mockCtrl)
+
+
+
+	client := NewRedisCache()
+}
+
+/*
 func TestRedisSetGet(t *testing.T) {
 	loadEnv()
 	client := NewRedisCache()

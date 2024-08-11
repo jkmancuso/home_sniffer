@@ -70,10 +70,20 @@ func NewRedisCache() redisCache {
 
 func (r redisCache) Get(ctx context.Context, key string) (string, bool) {
 
+	if len(key) == 0 {
+		log.Error("Empty key sent")
+		return "", false
+	}
+
 	result, err := r.Client.Get(ctx, key).Result()
 
 	if err != nil {
-		log.Errorf("Empty result from redis for key %v\n%v", key, err)
+		if err == redis.Nil {
+			log.Errorf("Key %v not found\n%v", key, err)
+		} else {
+			log.Errorf("Redis Error for key %v\n%v", key, err)
+		}
+
 		return "", false
 	}
 
