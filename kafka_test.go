@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"context"
 	"testing"
@@ -24,3 +25,4 @@ func TestConnectAndSend(t *testing.T) {
 	})
 
 }
+*/

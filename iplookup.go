@@ -45,15 +45,15 @@ func GetIPLookupInfo(ctx context.Context, ipAddress string, cache Cache) (ipInfo
 		return info, nil
 	}
 
-	DNSname, found := cache.Get(ctx, ipAddress)
+	DNSname, err := cache.Get(ctx, ipAddress)
 
-	info.DNS = DNSname
-
-	if found { // if its in the cache you're good. just return info
+	if err == nil { // if its in the cache you're good. just return info
 		log.Debugf("Found IP %v in cache!", info.Ipv4)
 	} else { // if its not in cache...
 		log.Debugf("Did not find IP %v in cache", info.Ipv4)
 	}
+
+	info.DNS = DNSname
 
 	log.Debugf("Returning ip info: %+v", info)
 

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -10,6 +12,8 @@ import (
 )
 
 const redisEnvfile = "./redis.env"
+
+var errRedisKeyMissing = errors.New("empty key sent")
 
 type RedisCfg struct {
 	Addr     string
@@ -68,28 +72,30 @@ func NewRedisCache() redisCache {
 
 }
 
-func (r redisCache) Get(ctx context.Context, key string) (string, bool) {
+func (r redisCache) Get(ctx context.Context, key string) (string, error) {
 
 	if len(key) == 0 {
-		log.Error("Empty key sent")
-		return "", false
+		log.Error(errRedisKeyMissing.Error())
+		return "", errRedisKeyMissing
 	}
 
 	result, err := r.Client.Get(ctx, key).Result()
 
-	if err != nil {
-		if err == redis.Nil {
-			log.Errorf("Key %v not found\n%v", key, err)
-		} else {
-			log.Errorf("Redis Error for key %v\n%v", key, err)
-		}
+	if err == redis.Nil {
+		log.Errorf("key %v not found\n%v", key, err)
+		return "", err
+	}
 
-		return "", false
+	if err != nil {
+		//really shouldnt hit this
+		errStr := fmt.Sprintf("redis error for key %v", key)
+		log.Error(errStr)
+		return "", errors.New(errStr)
 	}
 
 	log.Debugf("Successfully pulled cache entry %v from redis", result)
 
-	return result, true
+	return result, nil
 
 }
 
