@@ -52,6 +52,7 @@ func NewStore(ctx context.Context, outputType string) (stores.Sender, error) {
 
 	case "file":
 		loadEnv(fileEnvfile)
+		log.Println("Sending output to file")
 		store, err = stores.NewFileStore()
 	}
 

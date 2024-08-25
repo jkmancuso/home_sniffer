@@ -42,19 +42,19 @@ func setLogger() {
 
 }
 
-func getCmdLineParams() map[string]string {
-	params := make(map[string]string)
+func getCmdLineParams() map[string]*string {
+	params := make(map[string]*string)
 
-	params["device"] = *flag.String("device", "wlan0", "")
-	params["promisc"] = *flag.String("promisc", "true", "")
-	params["snaplen"] = *flag.String("snaplen", "1500", "")
-	params["timeout"] = *flag.String("timeout", "1", "")
-	params["filter"] = *flag.String("filter", "port 53 or port 443", "")
-	params["batch_size"] = *flag.String("batch_size", "100", "")
-	params["outputType"] = *flag.String("output", "kafka", "")
-	params["cacheType"] = *flag.String("cache", "redis", "")
+	params["device"] = flag.String("device", "wlan0", "")
+	params["promisc"] = flag.String("promisc", "true", "")
+	params["syscalls"] = flag.String("syscalls", "true", "")
+	params["snaplen"] = flag.String("snaplen", "1500", "")
+	params["timeout"] = flag.String("timeout", "1", "")
+	params["filter"] = flag.String("filter", "port 53 or port 443", "")
+	params["batch_size"] = flag.String("batch_size", "100", "")
+	params["outputType"] = flag.String("output", "kafka", "")
+	params["cacheType"] = flag.String("cache", "redis", "")
 	flag.Parse()
 
-	log.Debugf("Get flags: %+v", params)
 	return params
 }

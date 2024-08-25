@@ -37,18 +37,18 @@ type entryData struct {
 	Length int
 }
 
-func NewPcapCfg(params map[string]string) pcapConfig {
+func NewPcapCfg(params map[string]*string) pcapConfig {
 
-	device := params["device"]
-	snaplen, _ := strconv.Atoi(params["snaplen"])
-	timeout, _ := strconv.Atoi(params["timeout"])
-	batchSize, _ := strconv.Atoi(params["batch_size"])
-	promisc, _ := strconv.ParseBool(params["promisc"])
-	syscalls, _ := strconv.ParseBool(params["syscalls"])
+	device := *params["device"]
+	snaplen, _ := strconv.Atoi(*params["snaplen"])
+	timeout, _ := strconv.Atoi(*params["timeout"])
+	batchSize, _ := strconv.Atoi(*params["batch_size"])
+	promisc, _ := strconv.ParseBool(*params["promisc"])
+	syscalls, _ := strconv.ParseBool(*params["syscalls"])
 
-	filter := params["filter"]
+	filter := *params["filter"]
 
-	return pcapConfig{
+	cfg := pcapConfig{
 		device:    device,
 		snaplen:   int32(snaplen),
 		promisc:   promisc,
@@ -57,6 +57,9 @@ func NewPcapCfg(params map[string]string) pcapConfig {
 		batchSize: batchSize,
 		syscalls:  syscalls,
 	}
+
+	log.Printf("Using cfg: %+v", cfg)
+	return cfg
 }
 
 // Start new packet capture
