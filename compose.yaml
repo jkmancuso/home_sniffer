@@ -8,6 +8,7 @@ services:
     hostname: kafka-server
     ports:
       - "9094:9094"
+      - "9092:9092"
     volumes:
       - ./kafka_jks:/bitnami/kafka/config/certs:ro
     environment:
@@ -20,3 +21,18 @@ services:
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_CFG_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM=""
       - KAFKA_CERTIFICATE_PASSWORD=${KAFKA_CERTIFICATE_PASSWORD}
+  init-kafka:
+    image: "bitnami/kafka:latest"
+    depends_on:
+      - kafka-server
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      # blocks until kafka is reachable
+      kafka-topics.sh --bootstrap-server kafka-server:9092 --list
+
+      echo -e 'Creating kafka topics'
+      kafka-topics.sh --bootstrap-server kafka-server:9092 --create --if-not-exists --topic my-topic --replication-factor 1 --partitions 1
+   
+      kafka-configs.sh --bootstrap-server kafka-server:9092 --alter --entity-type topics --entity-name my-topic --add-config retention.ms=60000 
+      "
