@@ -220,6 +220,8 @@ func (cfg *pcapConfig) NewPcapHandle() (*pcap.Handle, error) {
 
 func NewEntryData(src ipInfo, dest ipInfo, size uint16) (entryData, error) {
 
+	time.Local = time.UTC
+
 	entry := entryData{
 		Time:   time.Now(),
 		Src:    src,
