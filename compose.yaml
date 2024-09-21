@@ -3,6 +3,8 @@ services:
     image: "redis:latest"
     ports:
       - "6379:6379"
+    networks:
+      - apptier
   kafka-server:
     image: "bitnami/kafka:latest"
     hostname: kafka-server
@@ -16,11 +18,13 @@ services:
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@localhost:9093
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-server:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-server:9092,EXTERNAL://kafka-server:9094
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:SSL,PLAINTEXT:PLAINTEXT,SSL:SSL
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_CFG_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM=""
       - KAFKA_CERTIFICATE_PASSWORD=${KAFKA_CERTIFICATE_PASSWORD}
+    networks:
+      - apptier
   init-kafka:
     image: "bitnami/kafka:latest"
     depends_on:
@@ -36,3 +40,9 @@ services:
    
       kafka-configs.sh --bootstrap-server kafka-server:9092 --alter --entity-type topics --entity-name my-topic --add-config retention.ms=60000 
       "
+    networks:
+      - apptier
+networks:
+  apptier:
+    name: app-tier
+    external: true

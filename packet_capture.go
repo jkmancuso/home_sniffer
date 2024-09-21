@@ -32,6 +32,7 @@ type pcapConfig struct {
 }
 
 type entryData struct {
+	Time   time.Time
 	Src    ipInfo
 	Dst    ipInfo
 	Length int
@@ -220,6 +221,7 @@ func (cfg *pcapConfig) NewPcapHandle() (*pcap.Handle, error) {
 func NewEntryData(src ipInfo, dest ipInfo, size uint16) (entryData, error) {
 
 	entry := entryData{
+		Time:   time.Now(),
 		Src:    src,
 		Dst:    dest,
 		Length: int(size),
